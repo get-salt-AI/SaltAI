@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salt-comfyui"
+version = "0.0.1"
+description = "Salt nodes for ComfyUI."
+authors = [{name = "WAS-PlaiLabs", email = "jordan.thompson@plailabs.com"}]
+license = "General Public License"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: General Public License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+homepage = "https://getsalt.ai"
+# documentation = ""
+# repository = ""
+
+[tool.poetry.dependencies]
+python = "^3.8"
+imageio-ffmpeg = "^0.4.9"
+llama-index = "0.9.44"
+llama-index-llms-openai = "0.1.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.2"
+
+[tool.poetry.exclude]
+patterns = ["marinade/**/*", "__pycache__/**/*"]
