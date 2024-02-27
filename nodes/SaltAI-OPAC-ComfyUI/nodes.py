@@ -1,5 +1,4 @@
 import random
-import noise
 import time
 import torch
 
@@ -116,7 +115,7 @@ class OPAC:
         self.rotz_repeat = kwargs.get('rotz_repeat', 1024)
 
     def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
-        noise_val = noise.pnoise1(base + x * scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeat=repeat)
+        noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
         return noise_val * (max_val - min_val) + min_val
 
     def execute(self, **kwargs):
@@ -272,8 +271,9 @@ class OPACListVariance:
     FUNCTION = "opac_variance"
     CATEGORY = "OPAC"
 
-    def sample_perlin(self, x, scale=0.05, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
-        return noise.pnoise1(self.noise_base + x * scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeat=repeat)
+    def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
+        noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+        return noise_val * (max_val - min_val) + min_val
     
     def opac_variance(self, list_input, tremor_scale, octaves, persistence, lacunarity, repeat):
         valied_list = [
