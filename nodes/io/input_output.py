@@ -7,12 +7,12 @@ import uuid
 import re
 import sys
 
-from salt_comfyui import ROOT
-from salt_comfyui.modules.convert import tensor2pil, pil2tensor, pil2mask
-from salt_comfyui.modules.types import WILDCARD
-from salt_comfyui.modules.sanitize import sanitize_filename
+from SaltAI import ROOT
+from SaltAI.modules.convert import tensor2pil, pil2tensor, pil2mask
+from SaltAI.modules.types import WILDCARD
+from SaltAI.modules.sanitize import sanitize_filename
 
-from salt_comfyui.modules.animation.image_animator import ImageAnimator
+from SaltAI.modules.animation.image_animator import ImageAnimator
 
 OUTPUT = os.path.join(ROOT, "marinade")
 

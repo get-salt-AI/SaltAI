@@ -5,7 +5,7 @@ import imageio
 import numpy as np
 from PIL import Image
 
-from salt_comfyui.modules.convert import tensor2pil
+from SaltAI.modules.convert import tensor2pil
 
 #############################
 # BSD 2-Clause License
