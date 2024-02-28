@@ -114,9 +114,19 @@ class OPAC:
         self.rotz_lacunarity = kwargs.get('rotz_lacunarity', 2.0)
         self.rotz_repeat = kwargs.get('rotz_repeat', 1024)
 
-    def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
-        noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
-        return noise_val * (max_val - min_val) + min_val
+    #def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
+    #    noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+    #    return noise_val * (max_val - min_val) + min_val
+
+
+    def sample_perlin(self, frame_index, range_min, range_max, tremor_scale, octaves, persistence, lacunarity, repeat):
+        # Prepare noise correctly with normalization
+        t = frame_index / (self.frame_count - 1 if self.frame_count > 1 else 1)
+        linear_value = (range_max - range_min) * t + range_min
+        noise = self.perlin_noise.sample(self.noise_base + frame_index * 0.1, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+        noise_adjustment = 1 + noise * tremor_scale
+        interpolated_value = linear_value * noise_adjustment
+        return interpolated_value
 
     def execute(self, **kwargs):
 
@@ -129,20 +139,22 @@ class OPAC:
         self.process_kwargs(**kwargs)
 
         if not self.use_wiggle:
-            return (0,) * 8
+            return ([0] * self.frame_count,) * 8
 
-        zoom, angle, translation_x, translation_y, translation_z, rotation_3d_x, rotation_3d_y, rotation_3d_z = ([] for _ in range(8))
-
-        for i in range(self.frame_count):
-            base = self.noise_base + i * 0.1
-            zoom.append(self.perlin_noise.sample(base, self.zoom_tremor_scale, octaves=self.zoom_octaves, persistence=self.zoom_persistence, lacunarity=self.zoom_lacunarity))
-            angle.append(self.perlin_noise.sample(base + 1, self.angle_tremor_scale, octaves=self.angle_octaves, persistence=self.angle_persistence, lacunarity=self.angle_lacunarity))
-            translation_x.append(self.perlin_noise.sample(base + 2, self.trx_tremor_scale, octaves=self.trx_octaves, persistence=self.trx_persistence, lacunarity=self.trx_lacunarity))
-            translation_y.append(self.perlin_noise.sample(base + 3, self.try_tremor_scale, octaves=self.try_octaves, persistence=self.try_persistence, lacunarity=self.try_lacunarity))
-            translation_z.append(self.perlin_noise.sample(base + 4, self.trz_tremor_scale, octaves=self.trz_octaves, persistence=self.trz_persistence, lacunarity=self.trz_lacunarity))
-            rotation_3d_x.append(self.perlin_noise.sample(base + 5, self.rotx_tremor_scale, octaves=self.rotx_octaves, persistence=self.rotx_persistence, lacunarity=self.rotx_lacunarity))
-            rotation_3d_y.append(self.perlin_noise.sample(base + 6, self.roty_tremor_scale, octaves=self.roty_octaves, persistence=self.roty_persistence, lacunarity=self.roty_lacunarity))
-            rotation_3d_z.append(self.perlin_noise.sample(base + 7, self.rotz_tremor_scale, octaves=self.rotz_octaves, persistence=self.rotz_persistence, lacunarity=self.rotz_lacunarity))
+        # More dynamic implementation this time
+        zoom, angle, translation_x, translation_y, translation_z, rotation_3d_x, rotation_3d_y, rotation_3d_z = (
+            [self.sample_perlin(i, *param) for i in range(self.frame_count)]
+            for param in [
+                (self.zoom_range[0], self.zoom_range[1], self.zoom_tremor_scale, self.zoom_octaves, self.zoom_persistence, self.zoom_lacunarity, self.zoom_repeat),
+                (self.angle_range[0], self.angle_range[1], self.angle_tremor_scale, self.angle_octaves, self.angle_persistence, self.angle_lacunarity, self.angle_repeat),
+                (self.trx_range[0], self.trx_range[1], self.trx_tremor_scale, self.trx_octaves, self.trx_persistence, self.trx_lacunarity, self.trx_repeat),
+                (self.try_range[0], self.try_range[1], self.try_tremor_scale, self.try_octaves, self.try_persistence, self.try_lacunarity, self.try_repeat),
+                (self.trz_range[0], self.trz_range[1], self.trz_tremor_scale, self.trz_octaves, self.trz_persistence, self.trz_lacunarity, self.trz_repeat),
+                (self.rotx_range[0], self.rotx_range[1], self.rotx_tremor_scale, self.rotx_octaves, self.rotx_persistence, self.rotx_lacunarity, self.rotx_repeat),
+                (self.roty_range[0], self.roty_range[1], self.roty_tremor_scale, self.roty_octaves, self.roty_persistence, self.roty_lacunarity, self.roty_repeat),
+                (self.rotz_range[0], self.rotz_range[1], self.rotz_tremor_scale, self.rotz_octaves, self.rotz_persistence, self.rotz_lacunarity, self.rotz_repeat)
+            ]
+        )
             
         def log_curve(label, value):
             print(f"\t\033[1m\033[93m{label}:\033[0m {value}")
@@ -271,21 +283,33 @@ class OPACListVariance:
     FUNCTION = "opac_variance"
     CATEGORY = "OPAC"
 
-    def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
-        noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
-        return noise_val * (max_val - min_val) + min_val
+    #def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
+    #    noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+    #    return noise_val * (max_val - min_val) + min_val
     
+    def sample_perlin(self, frame_index, range_min, range_max, tremor_scale, octaves, persistence, lacunarity, repeat):
+        # Prepare noise correctly with normalization
+        t = frame_index / (self.frame_count - 1 if self.frame_count > 1 else 1)
+        linear_value = (range_max - range_min) * t + range_min
+        noise = self.perlin_noise.sample(self.noise_base + frame_index * 0.1, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+        noise_adjustment = 1 + noise * tremor_scale
+        interpolated_value = linear_value * noise_adjustment
+        return interpolated_value
+
     def opac_variance(self, list_input, tremor_scale, octaves, persistence, lacunarity, repeat):
-        valied_list = [
-            val + self.perlin_noise.sample(self.noise_base + i * tremor_scale, 1.0, octaves, persistence, lacunarity)
-            for i, val in enumerate(list_input)
+        self.frame_count = len(list_input) 
+        varied_list = [
+            self.sample_perlin(i, min(list_input), max(list_input), tremor_scale, octaves, persistence, lacunarity, self.frame_count)
+            for i, _ in enumerate(self.frame_count)
         ]
 
         def log_curve(label, value):
             print(f"\t\033[1m\033[93m{label}:\033[0m {value}")
 
         print("\033[1m\033[94mOPAC Schedule Curves:\033[0m")
-        log_curve("List Curve", valied_list)
+        log_curve("List Curve", varied_list)
+
+        return (varied_list,)
 
     
 class OPACList2ExecList:
