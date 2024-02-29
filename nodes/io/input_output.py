@@ -24,7 +24,7 @@ class SaltInput:
                 "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK"],),
                 "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False}),
             },
-            "optional": {"input_image": ("IMAGE",), "input_mask": ("MAGK",)},
+            "optional": {"input_image": ("IMAGE",), "input_mask": ("MASK",)},
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
@@ -96,7 +96,10 @@ class SaltInput:
                 print("[WARNING] Unable to determine IMAGE or MASK to load!")
                 print("[WARNING] Returning image blank")
                 src_blank = Image.new("RGB", (512, 512), (0, 0, 0))
-                src_image = pil2tensor(src_blank)
+                if input_type == "IMAGE":
+                    src_image = pil2tensor(src_blank)
+                else:
+                    src_image = pil2mask(src_blank)
 
             return (src_image, ui)
 
