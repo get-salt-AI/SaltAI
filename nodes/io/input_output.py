@@ -7,12 +7,11 @@ import uuid
 from SaltAI import ROOT
 from SaltAI.modules.convert import tensor2pil, pil2tensor, pil2mask
 from SaltAI.modules.types import WILDCARD
-from SaltAI.modules.sanitize import sanitize_filename
+from SaltAI.modules.sanitize import sanitize_filename, bool_str
 
 from SaltAI.modules.animation.image_animator import ImageAnimator
 
 OUTPUT = os.path.join(ROOT, "marinade")
-
 
 class SaltInput:
     @classmethod
@@ -113,7 +112,7 @@ class SaltInput:
             case "FLOAT":
                 out = float(input_value)
             case "BOOLEAN":
-                out = bool(input_value)
+                out = bool_str(input_value)
             case _:
                 out = input_value
 
