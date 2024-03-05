@@ -1,6 +1,7 @@
 # Salt AI 
 
-![hero](https://github.com/getSaltAi/SaltAI-Open-Resources/assets/159991659/817d9b0f-5dca-4a4c-90d6-8c227d44c42e)
+![image](https://github.com/get-salt-AI/SaltAI/assets/474873/48a6fe00-6a29-407a-8d26-5b0ab5995ce4)
+
 
 This repository is a all-in-one custom node suite for ComfyUI, a dev tool that allows users to create node-based workflows often powered by various AI models to do pretty much anything. 
 
