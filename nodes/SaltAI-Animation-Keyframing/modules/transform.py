@@ -80,6 +80,7 @@ def movement_mode_curves(perlin_noise, movement_tremor_scale, frame_number, trem
         )
     }
 
+# Image Transform movement modes
 movement_modes = ["orbit", "side-to-side", "up-and-down", "diagonal_bottom_left", "diagonal_top_right"]
 
 # Easing Functions
@@ -87,28 +88,41 @@ def bounce_in(t):
     return 1 - bounce_out(1 - t)
 
 def bounce_out(t):
-    if t < 4/11.0:
+    if t < 4 / 11.0:
         return (121 * t * t) / 16.0
-    elif t < 8/11.0:
-        return (363/40.0 * t * t) - (99/10.0 * t) + 17/5.0
-    elif t < 9/10.0:
-        return (4356/361.0 * t * t) - (35442/1805.0 * t) + 16061/1805.0
+    elif t < 8 / 11.0:
+        return (363 / 40.0 * t * t) - (99 / 10.0 * t) + 17 / 5.0
+    elif t < 9 / 10.0:
+        return (4356 / 361.0 * t * t) - (35442 / 1805.0 * t) + 16061 / 1805.0
     else:
-        return (54/5.0 * t * t) - (513/25.0 * t) + 268/25.0
+        return (54 / 5.0 * t * t) - (513 / 25.0 * t) + 268 / 25.0
 
 def bounce_in_out(t):
     if t < 0.5:
-        return 0.5 * bounce_in(t*2)
+        return 0.5 * bounce_in(t * 2)
     else:
-        return 0.5 * bounce_out((t - 0.5)*2) + 0.5
+        return 0.5 * bounce_out(t * 2 - 1) + 0.5
+    
+def sinusoidal_in(t):
+    return 1 - np.cos((t * np.pi) / 2)
+
+def sinusoidal_out(t):
+    return np.sin((t * np.pi) / 2)
+
+def sinusoidal_in_out(t):
+    return -(np.cos(np.pi * t) - 1) / 2
 
 easing_functions = {
+    'linear': lambda t: t,
     'ease-in': lambda t: t ** 3,
     'ease-out': lambda t: 1 - (1 - t) ** 3,
     'ease-in-out': lambda t: 4 * t * (1 - t),
     'bounce-in': bounce_in,
     'bounce-out': bounce_out,
-    'bounce-in-out': bounce_in_out
+    'bounce-in-out': bounce_in_out,
+    'sinusoidal-in': sinusoidal_in,
+    'sinusoidal-out': sinusoidal_out,
+    'sinusoidal-in-out': sinusoidal_in_out
 }
 
 # Edge Handling Modes
@@ -334,3 +348,141 @@ def zoom_and_crop(image, zoom_factor, coordinates=(-1, -1)):
     cropped_image = resized_image[y1:y2, x1:x2]
     
     return cropped_image
+
+class OrganicPerlinCameraScheduler:
+    def __init__(
+                self, 
+                frame_count, 
+                zoom_speed=0.1,
+                pan_speed=0.1, 
+                pan_directions=[90], 
+                direction_change_frames=[0], 
+                tremor_params={'scale': 0.1, 'octaves': 1, 'persistence': 0.5, 'lacunarity': 2.0},
+                direction_curve='linear', 
+                start_x=0, 
+                start_y=0
+            ):
+        self.frame_count = frame_count
+        self.zoom_speed = zoom_speed
+        self.pan_speed = pan_speed
+        self.pan_directions = [np.radians(direction) for direction in pan_directions]
+        self.direction_change_frames = direction_change_frames
+        self.tremor_params = tremor_params
+        self.perlin_noise = PerlinNoise()
+        self.global_tremor = [self.perlin_noise.sample(x, **self.tremor_params) for x in range(frame_count)]
+        self.direction_curve = direction_curve
+        self.start_x = start_x
+        self.start_y = start_y 
+
+    def interpolate_direction(self, current_frame):
+        is_moving = False
+        direction = self.pan_directions[0]
+        for i, change_frame in enumerate(self.direction_change_frames):
+            if current_frame < change_frame:
+                direction = self.pan_directions[0]
+                break
+            elif i == len(self.direction_change_frames) - 1 or current_frame < self.direction_change_frames[i + 1]:
+                is_moving = True
+                start_direction = self.pan_directions[i]
+                end_direction = self.pan_directions[i + 1] if i + 1 < len(self.pan_directions) else start_direction
+                segment_start = change_frame
+                segment_end = self.direction_change_frames[i + 1] if i + 1 < len(self.direction_change_frames) else self.frame_count
+                progress = (current_frame - segment_start) / (segment_end - segment_start)
+                direction = self.apply_curve(start_direction, end_direction, progress)
+                break
+
+        return direction, is_moving
+
+    def apply_curve(self, start, end, progress):
+
+        easing_functions = {
+            'linear': lambda t: t,
+            'ease-in': lambda t: t ** 2,
+            'ease-out': lambda t: t * (2 - t),
+            'ease-in-out': lambda t: 3 * t ** 2 - 2 * t ** 3 if t < 0.5 else 1 - (-2 * t + 2) ** 3 / 2,
+            'bounce-in': bounce_in,
+            'bounce-out': bounce_out,
+            'bounce-in-out': bounce_in_out,
+            'sinusoidal-in': sinusoidal_in,
+            'sinusoidal-out': sinusoidal_out,
+            'sinusoidal-in-out': sinusoidal_in_out,
+        }
+
+        if self.direction_curve in easing_functions:
+            progress = easing_functions[self.direction_curve](progress)
+
+        return start + (end - start) * progress
+
+    def get_pan_offset(self, frame, direction, speed_factor=1.0, is_moving=True):
+        if not is_moving:
+            return 0, 0
+        dx = np.cos(direction) * self.pan_speed * speed_factor * frame
+        dy = np.sin(direction) * self.pan_speed * speed_factor * frame
+        return dx, dy
+
+    def get_zoom(self, mode, frame, speed_factor=1.0):
+        effective_speed = self.zoom_speed * speed_factor
+        if mode == 'zoom-in':
+            return 1 + effective_speed * frame
+        elif mode == 'zoom-out':
+            return max(1 - effective_speed * frame, 0.1)
+        elif mode == 'zoom-in-out':
+            mid_point = self.frame_count / 2
+            if frame <= mid_point:
+                return 1 + effective_speed * frame
+            else:
+                return max(1 + effective_speed * (self.frame_count - frame), 0.1)
+        return 1
+
+    def apply_tremor(self, value, frame, is_global=False):
+        tremor_scale = 0.01 if is_global else 0.1
+        return value + self.global_tremor[frame] * tremor_scale
+
+    def animate(self, mode, layer_offsets="1"):
+        layer_offsets = [float(offset) for offset in layer_offsets.split(',')]
+        layers_data = []
+
+        for offset in layer_offsets:
+            layer_data = []
+            for frame in range(self.frame_count):
+                current_direction, is_moving = self.interpolate_direction(frame)
+                zoom = self.get_zoom(mode, frame, speed_factor=offset)
+                dx, dy = self.get_pan_offset(frame, current_direction, speed_factor=offset, is_moving=is_moving)
+
+                zoom = self.apply_tremor(zoom, frame, is_global=True)
+                dx = self.apply_tremor(dx, frame, is_global=True)
+                dy = self.apply_tremor(dy, frame, is_global=True)
+
+                layer_data.append((zoom, dx, dy))
+            layers_data.append(layer_data)
+
+        return layers_data
+
+# Zoom Presets
+zoom_presets = {
+    "Zoom In": (1, 1.3),
+    "Zoom Out": (1, 0.7),
+    "Zoom In/Out": (1.3, 0.7),
+    "Zoom Out/In": (0.7, 1.3),
+}
+
+# Horizontal Pan Presets
+horizontal_pan_presets = {
+    "Pan Left → Right": (-64, 64),
+    "Pan Right → Left": (64, -64),
+    "Pan Left → Center": (-64, 0),
+    "Pan Right → Center": (64, 0),
+    "Pan Center → Right": (0, 64),
+    "Pan Center → Left": (0, -64),
+}
+
+
+# Vertical Pan Presets
+vertical_pan_presets = {
+    "Pan Up → Down": (64, -64),
+    "Pan Down → Up": (-64, 64),
+    "Pan Up → Center": (64, 0),
+    "Pan Down → Center": (-64, 0),
+    "Pan Center → Up": (0, 64),
+    "Pan Center → Down": (0, -64),
+}

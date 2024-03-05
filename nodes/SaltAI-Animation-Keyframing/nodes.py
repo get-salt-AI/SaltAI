@@ -1,13 +1,29 @@
 import random
-import noise
 import time
 import torch
 
+from pprint import pprint
 from tqdm import tqdm
+
+import nodes
 from comfy.utils import ProgressBar
 
-from .modules.transform import PerlinNoise, generate_frame, movement_modes, easing_functions, edge_modes
+from .modules.transform import (
+    PerlinNoise, 
+    OrganicPerlinCameraScheduler, 
+    generate_frame, 
+    movement_modes, 
+    easing_functions, 
+    edge_modes,
+    zoom_presets,
+    horizontal_pan_presets,
+    vertical_pan_presets
+)
 from .modules.utils import pil2mask, pil2tensor, tensor2pil
+
+def log_curve(label, value):
+    print(f"\t\033[1m\033[93m{label}:\033[0m")
+    pprint(value, indent=4)
 
 class OPAC:
     """
@@ -49,7 +65,7 @@ class OPAC:
     RETURN_TYPES = ("LIST", "LIST", "LIST", "LIST", "LIST", "LIST", "LIST", "LIST")
     RETURN_NAMES = ("zoom", "angle", "translation_x", "translation_y", "translation_z", "rotation_3d_x", "rotation_3d_y", "rotation_3d_z")
     FUNCTION = "execute"
-    CATEGORY = "OPAC"
+    CATEGORY = "SALT/Animation/Keyframing"
 
     def process_kwargs(self, **kwargs):
         self.use_wiggle = kwargs.get('use_wiggle', True)
@@ -115,9 +131,19 @@ class OPAC:
         self.rotz_lacunarity = kwargs.get('rotz_lacunarity', 2.0)
         self.rotz_repeat = kwargs.get('rotz_repeat', 1024)
 
-    def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
-        noise_val = noise.pnoise1(base + x * scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeat=repeat)
-        return noise_val * (max_val - min_val) + min_val
+    #def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
+    #    noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+    #    return noise_val * (max_val - min_val) + min_val
+
+
+    def sample_perlin(self, frame_index, range_min, range_max, tremor_scale, octaves, persistence, lacunarity, repeat):
+        # Prepare noise correctly with normalization
+        t = frame_index / (self.frame_count - 1 if self.frame_count > 1 else 1)
+        linear_value = (range_max - range_min) * t + range_min
+        noise = self.perlin_noise.sample(self.noise_base + frame_index * 0.1, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+        noise_adjustment = 1 + noise * tremor_scale
+        interpolated_value = linear_value * noise_adjustment
+        return interpolated_value
 
     def execute(self, **kwargs):
 
@@ -130,24 +156,23 @@ class OPAC:
         self.process_kwargs(**kwargs)
 
         if not self.use_wiggle:
-            return (0,) * 8
+            return ([0] * self.frame_count,) * 8
 
-        zoom, angle, translation_x, translation_y, translation_z, rotation_3d_x, rotation_3d_y, rotation_3d_z = ([] for _ in range(8))
-
-        for i in range(self.frame_count):
-            base = self.noise_base + i * 0.1
-            zoom.append(self.perlin_noise.sample(base, self.zoom_tremor_scale, octaves=self.zoom_octaves, persistence=self.zoom_persistence, lacunarity=self.zoom_lacunarity))
-            angle.append(self.perlin_noise.sample(base + 1, self.angle_tremor_scale, octaves=self.angle_octaves, persistence=self.angle_persistence, lacunarity=self.angle_lacunarity))
-            translation_x.append(self.perlin_noise.sample(base + 2, self.trx_tremor_scale, octaves=self.trx_octaves, persistence=self.trx_persistence, lacunarity=self.trx_lacunarity))
-            translation_y.append(self.perlin_noise.sample(base + 3, self.try_tremor_scale, octaves=self.try_octaves, persistence=self.try_persistence, lacunarity=self.try_lacunarity))
-            translation_z.append(self.perlin_noise.sample(base + 4, self.trz_tremor_scale, octaves=self.trz_octaves, persistence=self.trz_persistence, lacunarity=self.trz_lacunarity))
-            rotation_3d_x.append(self.perlin_noise.sample(base + 5, self.rotx_tremor_scale, octaves=self.rotx_octaves, persistence=self.rotx_persistence, lacunarity=self.rotx_lacunarity))
-            rotation_3d_y.append(self.perlin_noise.sample(base + 6, self.roty_tremor_scale, octaves=self.roty_octaves, persistence=self.roty_persistence, lacunarity=self.roty_lacunarity))
-            rotation_3d_z.append(self.perlin_noise.sample(base + 7, self.rotz_tremor_scale, octaves=self.rotz_octaves, persistence=self.rotz_persistence, lacunarity=self.rotz_lacunarity))
+        # More dynamic implementation this time
+        zoom, angle, translation_x, translation_y, translation_z, rotation_3d_x, rotation_3d_y, rotation_3d_z = (
+            [self.sample_perlin(i, *param) for i in range(self.frame_count)]
+            for param in [
+                (self.zoom_range[0], self.zoom_range[1], self.zoom_tremor_scale, self.zoom_octaves, self.zoom_persistence, self.zoom_lacunarity, self.zoom_repeat),
+                (self.angle_range[0], self.angle_range[1], self.angle_tremor_scale, self.angle_octaves, self.angle_persistence, self.angle_lacunarity, self.angle_repeat),
+                (self.trx_range[0], self.trx_range[1], self.trx_tremor_scale, self.trx_octaves, self.trx_persistence, self.trx_lacunarity, self.trx_repeat),
+                (self.try_range[0], self.try_range[1], self.try_tremor_scale, self.try_octaves, self.try_persistence, self.try_lacunarity, self.try_repeat),
+                (self.trz_range[0], self.trz_range[1], self.trz_tremor_scale, self.trz_octaves, self.trz_persistence, self.trz_lacunarity, self.trz_repeat),
+                (self.rotx_range[0], self.rotx_range[1], self.rotx_tremor_scale, self.rotx_octaves, self.rotx_persistence, self.rotx_lacunarity, self.rotx_repeat),
+                (self.roty_range[0], self.roty_range[1], self.roty_tremor_scale, self.roty_octaves, self.roty_persistence, self.roty_lacunarity, self.roty_repeat),
+                (self.rotz_range[0], self.rotz_range[1], self.rotz_tremor_scale, self.rotz_octaves, self.rotz_persistence, self.rotz_lacunarity, self.rotz_repeat)
+            ]
+        )
             
-        def log_curve(label, value):
-            print(f"\t\033[1m\033[93m{label}:\033[0m {value}")
-
         print("\033[1m\033[94mOPAC Schedule Curves:\033[0m")
 
         log_curve("zoom", zoom)
@@ -210,7 +235,7 @@ class OPACPerlinSettings:
     RETURN_TYPES = ("DICT",)
     RETURN_NAMES = ("opac_perlin_settings",)
     FUNCTION = "process"
-    CATEGORY = "OPAC"
+    CATEGORY = "SALT/Animation/Keyframing"
 
     def process(self, **kwargs):
         return (kwargs, )
@@ -239,10 +264,19 @@ class OPAC2Floats:
     RETURN_TYPES = ("FLOATS", "FLOATS", "FLOATS", "FLOATS", "FLOATS", "FLOATS", "FLOATS", "FLOATS")
     RETURN_NAMES = ("zoom", "angle", "translation_x", "translation_y", "translation_z", "rotation_x", "rotation_y", "rotation_z")
     FUNCTION = "convert"
-    CATEGORY = "OPAC"
+    CATEGORY = "SALT/Animation/Keyframing"
 
     def convert(self, **kwargs):
-        return tuple([kwargs[k] for k in kwargs])
+        return (
+                kwargs.get("zoom", [0]),
+                kwargs.get("angle", [0]),
+                kwargs.get("translation_x", [0]),
+                kwargs.get("translation_y", [0]),
+                kwargs.get("translation_z", [0]),
+                kwargs.get("rotation_x", [0]),
+                kwargs.get("rotation_y", [0]),
+                kwargs.get("rotation_z", [0])
+            )
     
 class OPACListVariance:
     """
@@ -270,22 +304,32 @@ class OPACListVariance:
     RETURN_TYPES = ("LIST",)
     RETURN_NAMES = ("list",)
     FUNCTION = "opac_variance"
-    CATEGORY = "OPAC"
+    CATEGORY = "SALT/Animation/Keyframing"
 
-    def sample_perlin(self, x, scale=0.05, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
-        return noise.pnoise1(self.noise_base + x * scale, octaves=octaves, persistence=persistence, lacunarity=lacunarity, repeat=repeat)
+    #def sample_perlin(self, base, scale, x, min_val, max_val, octaves=1, persistence=0.5, lacunarity=2.0, repeat=1024):
+    #    noise_val = self.perlin_noise.sample(base + x * scale, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+    #    return noise_val * (max_val - min_val) + min_val
     
+    def sample_perlin(self, frame_index, range_min, range_max, tremor_scale, octaves, persistence, lacunarity, repeat):
+        # Prepare noise correctly with normalization
+        t = frame_index / (self.frame_count - 1 if self.frame_count > 1 else 1)
+        linear_value = (range_max - range_min) * t + range_min
+        noise = self.perlin_noise.sample(self.noise_base + frame_index * 0.1, scale=1.0, octaves=octaves, persistence=persistence, lacunarity=lacunarity)
+        noise_adjustment = 1 + noise * tremor_scale
+        interpolated_value = linear_value * noise_adjustment
+        return interpolated_value
+
     def opac_variance(self, list_input, tremor_scale, octaves, persistence, lacunarity, repeat):
-        valied_list = [
-            val + self.perlin_noise.sample(self.noise_base + i * tremor_scale, 1.0, octaves, persistence, lacunarity)
-            for i, val in enumerate(list_input)
+        self.frame_count = len(list_input) 
+        varied_list = [
+            self.sample_perlin(i, min(list_input), max(list_input), tremor_scale, octaves, persistence, lacunarity, self.frame_count)
+            for i, _ in enumerate(self.frame_count)
         ]
 
-        def log_curve(label, value):
-            print(f"\t\033[1m\033[93m{label}:\033[0m {value}")
-
         print("\033[1m\033[94mOPAC Schedule Curves:\033[0m")
-        log_curve("List Curve", valied_list)
+        log_curve("List Curve", varied_list)
+
+        return (varied_list,)
 
     
 class OPACList2ExecList:
@@ -304,7 +348,7 @@ class OPACList2ExecList:
     RETURN_NAMES = ("float",)
     OUTPUT_IS_LIST = (True,)
     FUNCTION = "convert"
-    CATEGORY = "OPAC"
+    CATEGORY = "SALT/Animation/Keyframing"
 
     def convert(self, list_input):
         return (list_input, )
@@ -348,7 +392,7 @@ class OPACTransformImages:
     RETURN_TYPES = ("IMAGE", "MASK")
     RETURN_NAMES = ("images", "masks")
 
-    CATEGORY = "OPAC"
+    CATEGORY = "SALT/Animation/Transform"
     FUNCTION = "transform"
 
     def transform(
@@ -429,6 +473,204 @@ class OPACTransformImages:
         print(f"Transform Animation Completed in {elapsed_time:.2f} seconds")
 
         return (torch.cat(frames, dim=0), torch.cat(masks, dim=0))
+    
+
+class OPCScheduler:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "frame_count": ("INT", {"default": 60, "min": 1, "max": 4096}),
+                "zoom_speed": ("FLOAT", {"default": 0.01, "min": 0.001, "max": 1.0, "step": 0.001}),
+                "pan_speed": ("FLOAT", {"default": 0.5, "min": 0.001, "max": 5.0, "step": 0.001}),
+                "pan_directions": ("STRING", {"default": "90,180,270"}),
+                "direction_change_frames": ("STRING", {"default": "10,20,40"}),
+                "tremor_scale": ("FLOAT", {"default": 64, "min": 0.01, "max": 1024.0, "step": 0.01}),
+                "tremor_octaves": ("INT", {"default": 1, "min": 1, "max": 10}),
+                "tremor_persistence": ("FLOAT", {"default": 0.5, "min": 0.01, "max": 1.0, "step": 0.01}),
+                "tremor_lacunarity": ("FLOAT", {"default": 2.0, "min": 1.0, "max": 3.0, "step": 0.01}),
+                "direction_curve": (list(easing_functions.keys()), ),
+                "start_x": ("FLOAT", {"default": 0, "min": -nodes.MAX_RESOLUTION, "max": nodes.MAX_RESOLUTION}),
+                "start_y": ("FLOAT", {"default": 0}),
+                "zoom_mode": (["zoom-in", "zoom-out", "zoom-in-out"], ),
+                "layer_offsets": ("STRING", {"default": "1,0.8,0.6"}),
+            }
+        }
+
+    RETURN_TYPES = ("LIST",)
+    RETURN_NAMES = ("float_layers",)
+    FUNCTION = "execute"
+    CATEGORY = "SALT/Animation/Keyframing/Parallax Motion"
+
+    def __init__(self):
+        self.scheduler = None
+
+    def execute(self, **kwargs):
+
+        self.process_kwargs(**kwargs)
+
+        if not self.scheduler:
+            raise Exception("Camera Scheduler was not initialized. Perhaps your settings are bugged?")
+        
+        mode = kwargs.get("zoom_mode", "zoom-in")
+        layer_offsets = kwargs.get("layer_offsets", "1")
+
+        animation_data = self.scheduler.animate(mode, layer_offsets)
+
+        return (animation_data, )
+
+    def process_kwargs(self, **kwargs):
+        frame_count = kwargs.get("frame_count", 60)
+        zoom_speed = kwargs.get("zoom_speed", 0.01)
+        pan_speed = kwargs.get("pan_speed", 0.5)
+        pan_directions = list(map(float, kwargs.get("pan_directions", "90,180,270").split(",")))
+        direction_change_frames = list(map(int, kwargs.get("direction_change_frames", "10,20,40").split(",")))
+        tremor_params = {
+            "scale": kwargs.get("tremor_scale", 0.1),
+            "octaves": kwargs.get("tremor_octaves", 1),
+            "persistence": kwargs.get("tremor_persistence", 0.5),
+            "lacunarity": kwargs.get("tremor_lacunarity", 2.0),
+        }
+        direction_curve = kwargs.get("direction_curve", "linear")
+        start_x = kwargs.get("start_x", 0)
+        start_y = kwargs.get("start_y", 0)
+
+        self.scheduler = OrganicPerlinCameraScheduler(
+            frame_count=frame_count,
+            zoom_speed=zoom_speed,
+            pan_speed=pan_speed,
+            pan_directions=pan_directions,
+            direction_change_frames=direction_change_frames,
+            tremor_params=tremor_params,
+            direction_curve=direction_curve,
+            start_x=start_x,
+            start_y=start_y,
+        )
+
+class OPCSLayerExtractor:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "float_layers": ("LIST", ),
+                "layer_index": ("INT", {"default": 0, "min": 0})
+            }
+        }
+
+    RETURN_TYPES = ("LIST", "LIST", "LIST")
+    RETURN_NAMES = ("zoom_values", "x_values", "y_values")
+    FUNCTION = "extract"
+    CATEGORY = "SALT/Animation/Keyframing/Parallax Motion"
+
+    def extract(self, **kwargs):
+        animation_data = kwargs.get("float_layers", [])
+        layer_index = kwargs.get("layer_index", 0)
+
+        if layer_index >= len(animation_data):
+            raise ValueError("Layer index out of range.")
+
+        selected_layer_data = animation_data[layer_index]
+        zoom_values = [frame[0] for frame in selected_layer_data]
+        x_values = [frame[1] for frame in selected_layer_data]
+        y_values = [frame[2] for frame in selected_layer_data]
+
+        print("\033[1m\033[94mOPAC Schedule Curves:\033[0m")
+        log_curve("Zoom Values", zoom_values)
+        log_curve("X Values", x_values)
+        log_curve("Y Values", y_values)
+
+        return zoom_values, x_values, y_values
+
+
+class ParallaxMotion:
+    """
+    A node for generating min/max FLOAT values for Front and Back layers across X, Y, and Z axes
+    in 2D plane translations to create a parallax effect, based on selected presets or custom input values.
+    Adjusts these values based on the parallax intensity.
+    """
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                 "zoom_preset": (["None", "Zoom In", "Zoom Out", "Zoom In/Out", "Zoom Out/In", "Custom"], {
+                    "default": "None"
+                }),
+                "horizontal_pan_preset": (["None", "Pan Left → Right", "Pan Right → Left", "Pan Left → Center", 
+                                           "Pan Right → Center", "Pan Center → Right", "Pan Center → Left", "Custom"], {
+                    "default": "None"
+                }),
+                "vertical_pan_preset": (["None", "Pan Up → Down", "Pan Down → Up", "Pan Up → Center", 
+                                         "Pan Down → Center", "Pan Center → Up", "Pan Center → Down", "Custom"], {
+                    "default": "None"
+                }),
+                "custom_x_min": ("FLOAT", {"default": 0.0}),
+                "custom_x_max": ("FLOAT", {"default": 0.0}),
+                "custom_y_min": ("FLOAT", {"default": 0.0}),
+                "custom_y_max": ("FLOAT", {"default": 0.0}),
+                "custom_z_min": ("FLOAT", {"default": 1.0}),
+                "custom_z_max": ("FLOAT", {"default": 1.0}),
+                "parallax_intensity": ("FLOAT", {"default": 1.0}),
+                "zoom_intensity": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0}),
+            },
+        }
+
+    RETURN_TYPES = ("FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT", "FLOAT")
+    RETURN_NAMES = ("front_x_min", "front_x_max", "front_y_min", "front_y_max", "front_z_min", "front_z_max", "back_x_min", "back_x_max", "back_y_min", "back_y_max", "back_z_min", "back_z_max")
+    FUNCTION = "generate_parameters"
+    CATEGORY = "SALT/Animation/Keyframing/Parallax Motion"
+
+    def generate_parameters(self, zoom_preset, horizontal_pan_preset, vertical_pan_preset, 
+                        custom_x_min, custom_x_max, custom_y_min, custom_y_max, 
+                        custom_z_min, custom_z_max, parallax_intensity, zoom_intensity):
+        # Initialize default axis values
+        x_min, x_max = 0, 0
+        y_min, y_max = 0, 0
+        z_min, z_max = 1, 1  # Default Z values assume no zoom (scale of 1)
+        
+        # Apply the selected zoom preset
+        if zoom_preset in zoom_presets:
+            z_min, z_max = zoom_presets[zoom_preset]
+        
+        # Apply the selected horizontal pan preset
+        if horizontal_pan_preset in horizontal_pan_presets:
+            x_min, x_max = horizontal_pan_presets[horizontal_pan_preset]
+        
+        # Apply the selected vertical pan preset
+        if vertical_pan_preset in vertical_pan_presets:
+            y_min, y_max = vertical_pan_presets[vertical_pan_preset]
+        
+        # For 'Custom' selections, override with custom values
+        if zoom_preset == "Custom":
+            z_min, z_max = custom_z_min, custom_z_max
+        if horizontal_pan_preset == "Custom":
+            x_min, x_max = custom_x_min, custom_x_max
+        if vertical_pan_preset == "Custom":
+            y_min, y_max = custom_y_min, custom_y_max
+
+        # Calculate the back layer's values based on the parallax intensity
+        back_x_min = x_min / parallax_intensity if x_min != 0 else 0
+        back_x_max = x_max / parallax_intensity if x_max != 0 else 0
+        back_y_min = y_min / parallax_intensity if y_min != 0 else 0
+        back_y_max = y_max / parallax_intensity if y_max != 0 else 0
+        # Z values are not adjusted by parallax intensity
+        back_z_min, back_z_max = z_min, z_max
+
+        # Adjust for zoom intensity for Z axis to increase front zoom relative to back with higher intensity values
+        # This approach assumes the front layer's zoom can increase more than the back's as zoom_intensity increases.
+        # Adjust the formula as needed to align with your specific vision for the effect.
+        adjusted_front_z_min = z_min * (1 + zoom_intensity - 1)  # Example adjustment, enhances the front zoom based on intensity
+        adjusted_front_z_max = z_max * (1 + zoom_intensity - 1)  # Similarly for max zoom
+
+        # The back layer's zoom could remain unchanged, or you could apply a different formula if the back layer also needs adjustment.
+        back_z_min, back_z_max = z_min, z_max  # Keeps back layer's zoom unchanged; modify as needed.
+
+
+        return (x_min, x_max, y_min, y_max, adjusted_front_z_min, adjusted_front_z_max, back_x_min, back_x_max, back_y_min, back_y_max, back_z_min, back_z_max)
 
 
 NODE_CLASS_MAPPINGS = {
@@ -437,14 +679,20 @@ NODE_CLASS_MAPPINGS = {
     "OPAC2Floats": OPAC2Floats,
     "OPACListVariance": OPACListVariance,
     "OPACList2ExecList": OPACList2ExecList,
-    "OPACTransformImages": OPACTransformImages,
+    #"OPACTransformImages": OPACTransformImages,
+    "OPCScheduler": OPCScheduler,
+    "OPCSLayerExtractor": OPCSLayerExtractor,
+    "ParallaxMotion": ParallaxMotion
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "OPAC": "OPAC Scheduler",
-    "OPACPerlinSettings": "OPAC Perlin Settings",
-    "OPAC2Floats": "OPAC Convert to FLOATS (MTB)",
-    "OPACListVariance": "Apply OPAC to List",
-    "OPACList2ExecList": "OPAC Convert Iterative Execution List",
-    "OPACTransformImages": "OPAC Transform Image Batch",
+    "OPACPerlinSettings": "Keyframing Perlin Settings",
+    "OPAC2Floats": "Keyframing Convert to FLOATS (MTB)",
+    "OPACListVariance": "Apply Keyframing to List",
+    "OPACList2ExecList": "Keyframing Convert Iterative Execution List",
+    #"OPACTransformImages": "OPAC Transform Image Batch",
+    "OPCScheduler": "Parallax Motion Camera Scheduler",
+    "OPCSLayerExtractor": "Parallax Motion Camera Scheduler Extractor",
+    "ParallaxMotion": "Parallax Motion Parameters Generator"
 }
