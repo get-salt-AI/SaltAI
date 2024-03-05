@@ -597,15 +597,15 @@ class ParallaxMotion:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                 "zoom_preset": (["None", "Zoom In", "Zoom Out", "Zoom In/Out", "Zoom Out/In", "Custom"], {
+                "zoom_preset": (["None", "Zoom In", "Zoom Out", "Zoom In/Out", "Zoom Out/In", "Custom", "Select Random"], {
                     "default": "None"
                 }),
                 "horizontal_pan_preset": (["None", "Pan Left → Right", "Pan Right → Left", "Pan Left → Center", 
-                                           "Pan Right → Center", "Pan Center → Right", "Pan Center → Left", "Custom"], {
+                                        "Pan Right → Center", "Pan Center → Right", "Pan Center → Left", "Custom", "Select Random"], {
                     "default": "None"
                 }),
                 "vertical_pan_preset": (["None", "Pan Up → Down", "Pan Down → Up", "Pan Up → Center", 
-                                         "Pan Down → Center", "Pan Center → Up", "Pan Center → Down", "Custom"], {
+                                        "Pan Down → Center", "Pan Center → Up", "Pan Center → Down", "Custom", "Select Random"], {
                     "default": "None"
                 }),
                 "custom_x_min": ("FLOAT", {"default": 0.0}),
@@ -627,6 +627,30 @@ class ParallaxMotion:
     def generate_parameters(self, zoom_preset, horizontal_pan_preset, vertical_pan_preset, 
                         custom_x_min, custom_x_max, custom_y_min, custom_y_max, 
                         custom_z_min, custom_z_max, parallax_intensity, zoom_intensity):
+            # Handle random selection for zoom presets
+        if zoom_preset == "Select Random":
+            zoom_options = [key for key in zoom_presets.keys() if key not in ["None", "Custom", "Select Random"]]
+            zoom_preset = random.choice(zoom_options)
+        # Apply the selected or randomly chosen zoom preset
+        if zoom_preset in zoom_presets:
+            z_min, z_max = zoom_presets[zoom_preset]
+
+        # Handle random selection for horizontal pan presets
+        if horizontal_pan_preset == "Select Random":
+            horizontal_options = [key for key in horizontal_pan_presets.keys() if key not in ["None", "Custom", "Select Random"]]
+            horizontal_pan_preset = random.choice(horizontal_options)
+        # Apply the selected or randomly chosen horizontal pan preset
+        if horizontal_pan_preset in horizontal_pan_presets:
+            x_min, x_max = horizontal_pan_presets[horizontal_pan_preset]
+
+        # Handle random selection for vertical pan presets
+        if vertical_pan_preset == "Select Random":
+            vertical_options = [key for key in vertical_pan_presets.keys() if key not in ["None", "Custom", "Select Random"]]
+            vertical_pan_preset = random.choice(vertical_options)
+        # Apply the selected or randomly chosen vertical pan preset
+        if vertical_pan_preset in vertical_pan_presets:
+            y_min, y_max = vertical_pan_presets[vertical_pan_preset]
+        
         # Initialize default axis values
         x_min, x_max = 0, 0
         y_min, y_max = 0, 0
