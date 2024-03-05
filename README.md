@@ -20,7 +20,7 @@ We hope that by sharing our nodes and workflows, we can inspire and empower more
 
 
 ## 🤝 Contributing 
-_We love your input!_ We want to you to feel welcome to contribute to this project.
+_We love your input!_ We want to you to feel welcome to contribute to this project whether it's:
 
 - 🐛 Reporting a bug 
 - 🛠️ Submitting a fix 
