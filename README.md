@@ -1,27 +1,31 @@
-# Salt AI 
+![image](https://github.com/scottbaggett/SaltAI/assets/474873/6638a9c4-1a96-47c3-a713-a27383674465)
 
-![hero](https://github.com/getSaltAi/SaltAI-Open-Resources/assets/159991659/817d9b0f-5dca-4a4c-90d6-8c227d44c42e)
+# Salt AI
+### Accelerate your Comfy UI workflow creation, sharing, and scaling.
 
-This repository is a all-in-one custom node suite for ComfyUI, a dev tool that allows users to create node-based workflows often powered by various AI models to do pretty much anything. 
+### Overview
+This repository offers a comprehensive suite of custom nodes for ComfyUI, a development tool designed for constructing node-based workflows. These workflows are enhanced by various AI models, enabling a wide array of functionalities.
 
-Our mission is to seamlessly connect people and organizations with the world’s foremost AI innovations, anywhere, anytime. 
-Our vision is to foster a flourishing AI ecosystem where the world’s best developers can build and share their work, thereby redefining how software is made, pushing innovation forward, and ensuring as many people as possible can benefit from the positive promise of AI technologies.
+### About Salt
+- **Mission**: TO seamlessly connect people and organizations with the world’s foremost AI innovations, anywhere, anytime.
 
-We believe that ComfyUI is a powerful tool that can help us achieve our mission and vision, by enabling anyone to explore the possibilities and limitations of AI models in a visual and interactive way, without coding if desired.
+- **Vision**: To foster a flourishing AI ecosystem where the world’s best developers can build and share their work, thereby redefining how software is made, pushing innovation forward, and ensuring as many people as possible can benefit from the positive promise of AI technologies.
 
-We hope that by sharing our nodes and workflows, we can inspire and empower more people to create amazing AI-powered content with ComfyUI.
+- **Belief**: We are convinced that ComfyUI serves as a critical instrument in realizing our mission and vision. It offers a platform for exploring AI models' capabilities and limitations in an interactive, visually engaging manner, requiring no coding skills for exploration.
 
-## 🧭 Explore
+By sharing our nodes and workflows, we aim to motivate and empower a broader audience to craft exceptional AI-driven content using ComfyUI.
 
+## 🧭 Discover
 
-- <font size="5">[Our Nodes](https://github.com/get-salt-AI/SaltAI/tree/main/nodes)</font>
-- <font size="5">[Our website](https://getsalt.ai)</font>
-- <font size="5">[Our blog](https://blog.getsalt.ai/)</font>
+- **[Our Nodes](https://github.com/get-salt-AI/SaltAI/tree/main/nodes)**: Explore our custom nodes.
+- **[Our Website](https://getsalt.ai)**: Visit us for more information.
+- **[Our Blog](https://blog.getsalt.ai/)**: Gain insights from our experts.
 
+## 🤝 Get Involved 
+_Your contributions are valuable!_ We warmly invite you to join our project, whether you're:
 
-## 🤝 Contributing 
-_We love your input!_ We want to you to feel welcome to contribute to this project whether it's:
+- 🐛 Identifying and reporting bugs
+- 🛠️ Offering fixes
+- 🚀 Proposing new features or improvements through pull requests
 
-- 🐛 Reporting a bug 
-- 🛠️ Submitting a fix 
-- 🚀 Submitting a pull request for improvements or features
+Your participation helps us grow and improve, fostering a collaborative and innovative environment.
