@@ -7,9 +7,9 @@
 This repository offers a comprehensive suite of custom nodes for ComfyUI, a development tool designed for constructing node-based workflows. These workflows are enhanced by various AI models, enabling a wide array of functionalities.
 
 ### About Salt
-- **Mission**: Our goal is to effortlessly bridge the gap between individuals, organizations, and the leading advancements in artificial intelligence, providing access anytime and anywhere.
+- **Mission**: TO seamlessly connect people and organizations with the world’s foremost AI innovations, anywhere, anytime.
 
-- **Vision**: We aim to cultivate an enriching AI ecosystem where premier developers can innovate, share their creations, and redefine the approach to software development. Through this, we aspire to drive progress, harness the potential of AI technologies, and ensure widespread benefits from its positive impacts.
+- **Vision**: To foster a flourishing AI ecosystem where the world’s best developers can build and share their work, thereby redefining how software is made, pushing innovation forward, and ensuring as many people as possible can benefit from the positive promise of AI technologies.
 
 - **Belief**: We are convinced that ComfyUI serves as a critical instrument in realizing our mission and vision. It offers a platform for exploring AI models' capabilities and limitations in an interactive, visually engaging manner, requiring no coding skills for exploration.
 
