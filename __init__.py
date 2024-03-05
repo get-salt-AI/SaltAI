@@ -2,11 +2,11 @@ import os
 
 import folder_paths
 
-from salt_comfyui.modules.node_importer import ModuleLoader
+from SaltAI.modules.node_importer import ModuleLoader
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 NAME = "Salt.AI"
-PACKAGE = "salt_comfyui"
+PACKAGE = "SaltAI"
 NODES_DIR = os.path.join(ROOT, 'nodes')
 EXTENSION_WEB_DIRS = {}
 NODE_CLASS_MAPPINGS = {}
