@@ -195,7 +195,7 @@ class SaltOutput:
         if os.path.exists(output_path):
             print(f"[SALT] Unable to create output directory `{output_path}`")
 
-        out_files = []
+        out_file = None
         results = []
         if output_type == "PNG":
             # Save all images in the tensor batch as PNG
@@ -212,11 +212,11 @@ class SaltOutput:
                         "subfolder": asset_id,
                         "type": "output"
                     })
-                    out_files.append(filename)
                     if os.path.exists(image_path):
                         print(f"[SALT] Saved image to `{image_path}`")
                     else:
                         print(f"[SALT] Unable to save image to `{image_path}`")
+                out_file = results[0]["filename"]
             except Exception as e:
                 raise e
 
@@ -233,7 +233,7 @@ class SaltOutput:
                     "subfolder": asset_id,
                     "type": "output"
                 })
-            out_files.append(os.path.basename(filename))
+            out_file = os.path.basename(filename)
             if os.path.exists(filename):
                 print(f"[SALT] Saved file to `{filename}`")
             else:
@@ -250,7 +250,7 @@ class SaltOutput:
                     "id": unique_id,
                     "reference_uuid": asset_id,
                     "subfolder": asset_id,
-                    "filename": out_files,
+                    "filename": out_file,
                     "description": output_desc,
                     "asset": is_asset,
                     "type": output_type,
