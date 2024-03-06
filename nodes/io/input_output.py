@@ -4,14 +4,14 @@ import torch
 from PIL import Image
 import uuid
 
+import folder_paths
+
 from SaltAI import ROOT
 from SaltAI.modules.convert import tensor2pil, pil2tensor, pil2mask
 from SaltAI.modules.types import WILDCARD
 from SaltAI.modules.sanitize import sanitize_filename, bool_str
 
 from SaltAI.modules.animation.image_animator import ImageAnimator
-
-OUTPUT = os.path.join(ROOT, "marinade")
 
 class SaltInput:
     @classmethod
@@ -70,7 +70,7 @@ class SaltInput:
             elif isinstance(input_mask, torch.Tensor):
                 # Input `MASK` is provided, so we act like a passthrough
                 return (input_mask, ui)
-            elif input_value.strip() != "":
+            elif input_value.strip():
                 # Load image from path from input_value
                 try:
                     src_image = Image.open(input_value.strip()).convert("RGBA")
@@ -190,10 +190,13 @@ class SaltOutput:
             output_name = sanitize_filename(output_name)
 
         # Create output dir based on uuid4
-        output_path = os.path.join("/ComfyUI/output/", asset_id)
+        output_path = os.path.join(folder_paths.get_output_directory(), asset_id)
         os.makedirs(output_path, exist_ok=True)
+        if os.path.exists(output_path):
+            print(f"[SALT] Unable to create output directory `{output_path}`")
 
-        output_files = []
+        out_files = []
+        results = []
         if output_type == "PNG":
             # Save all images in the tensor batch as PNG
             try:
@@ -204,7 +207,16 @@ class SaltOutput:
                     filename = f"{file_prefix}_{index:04d}{file_ext}"
                     image_path = os.path.join(output_path, filename)
                     pil_image.save(image_path)
-                    output_files.append(filename)
+                    results.append({
+                        "filename": filename,
+                        "subfolder": asset_id,
+                        "type": "output"
+                    })
+                    out_files.append(filename)
+                    if os.path.exists(image_path):
+                        print(f"[SALT] Saved image to `{image_path}`")
+                    else:
+                        print(f"[SALT] Unable to save image to `{image_path}`")
             except Exception as e:
                 raise e
 
@@ -215,6 +227,17 @@ class SaltOutput:
                 output_data, fps=int(animation_fps), quality=animation_quality
             )
             animator.save_animation(filename, format=output_type)
+            if output_type in ["GIF", "WEBP"]:
+                results.append({
+                    "filename": os.path.basename(filename),
+                    "subfolder": asset_id,
+                    "type": "output"
+                })
+            out_files.append(os.path.basename(filename))
+            if os.path.exists(filename):
+                print(f"[SALT] Saved file to `{filename}`")
+            else:
+                print(f"[SALT] Unable to save file to `{filename}`")
         else:
             # Prepare output string
             if output_type == "STRING":
@@ -227,7 +250,7 @@ class SaltOutput:
                     "id": unique_id,
                     "reference_uuid": asset_id,
                     "subfolder": asset_id,
-                    "filename": output_name,
+                    "filename": out_files,
                     "description": output_desc,
                     "asset": is_asset,
                     "type": output_type,
@@ -235,6 +258,10 @@ class SaltOutput:
                 }]
             }
         }
+
+        # Assign images for previews of supported types
+        if output_type in ["PNG", "GIF", "WEBP"] and results:
+            ui["ui"].update({"images": results})
 
         # Print to log
         print(f"[SaltOutput_{unique_id}] Output:")
