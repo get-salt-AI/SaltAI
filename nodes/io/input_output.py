@@ -192,22 +192,13 @@ class SaltOutput:
         # Create output dir based on uuid4
         output_path = os.path.join(folder_paths.get_output_directory(), asset_id)
         os.makedirs(output_path, exist_ok=True)
-<<<<<<< Updated upstream
-        if os.path.exists(output_path):
-=======
         if not os.path.exists(output_path):
->>>>>>> Stashed changes
             print(f"[SALT] Unable to create output directory `{output_path}`")
 
         out_files = []
         results = []
-<<<<<<< Updated upstream
-        if output_type == "PNG":
-            # Save all images in the tensor batch as PNG
-=======
         if output_type in ("PNG", "JPEG"):
             # Save all images in the tensor batch as specified by output_type
->>>>>>> Stashed changes
             try:
                 for index, img in enumerate(output_data):
                     pil_image = tensor2pil(img)
@@ -215,11 +206,7 @@ class SaltOutput:
                     file_ext = f".{output_type.lower()}"
                     filename = f"{file_prefix}_{index:04d}{file_ext}"
                     image_path = os.path.join(output_path, filename)
-<<<<<<< Updated upstream
-                    pil_image.save(image_path)
-=======
                     pil_image.save(image_path, output_type)
->>>>>>> Stashed changes
                     results.append({
                         "filename": filename,
                         "subfolder": asset_id,
