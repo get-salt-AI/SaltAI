@@ -25,7 +25,7 @@ NODE_DISPLAY_NAME_MAPPINGS = module_loader.NODE_DISPLAY_NAME_MAPPINGS
 # Timings and such
 module_loader.report(NAME)
 
-# Add .results format (for future, in case PlaiLabs isn't refactored for public)
+# Add .results format
 folder_paths.supported_pt_extensions.add('.results')
 if '.results' in folder_paths.supported_pt_extensions:
     print("\nAdded LoRa extension format: .results")

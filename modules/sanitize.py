@@ -21,4 +21,8 @@ def bool_str(string_value=None):
         base = string_value.lower().strip()
         if base == "true" or base == "1":
             return True
+<<<<<<< Updated upstream
     return False
+=======
+    return False
+>>>>>>> Stashed changes
