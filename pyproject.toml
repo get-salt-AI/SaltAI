@@ -1,34 +1,40 @@
-[build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "salt-comfyui"
+[tool.poetry]
+name = "SaltAI"
 version = "0.0.1"
 description = "Salt nodes for ComfyUI."
-authors = [{name = "WAS-PlaiLabs", email = "jordan.thompson@plailabs.com"}]
+authors = ["WAS-PlaiLabs <jordan.thompson@plailabs.com>"]
 license = "General Public License"
-readme = "README.md"
-requires-python = ">=3.8"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: General Public License",
-    "Operating System :: OS Independent",
-]
-
-[project.urls]
-homepage = "https://getsalt.ai"
-# documentation = ""
-# repository = ""
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 imageio-ffmpeg = "^0.4.9"
-llama-index = "0.9.44"
+llama-index = "0.10.14"
+llama-index-agent-openai = "0.1.5"
+llama-index-cli = "0.1.5"
+llama-index-core = "0.10.14"
+llama-index-embeddings-openai = "0.1.6"
+llama-index-indices-managed-llama-cloud = "0.1.3"
+llama-index-legacy = "0.9.48"
 llama-index-llms-openai = "0.1.6"
+llama-index-multi-modal-llms-openai = "0.1.4"
+llama-index-program-openai = "0.1.4"
+llama-index-question-gen-openai = "0.1.3"
+llama-index-readers-file = "0.1.6"
+llama-index-readers-llama-parse = "0.1.3"
+llama-index-readers-web = "0.1.6"
+llama-index-vector-stores-chroma = "0.1.4"
+llama-parse = "0.3.4"
+llamaindex-py-client = "0.1.13"
+llvmlite = "0.42.0"
+jsonpath-ng = "1.6.1"
+pillow = "10.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
 
-[tool.poetry.exclude]
-patterns = ["marinade/**/*", "__pycache__/**/*"]
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# Exclude specific patterns from the package
+exclude = ["marinade/**/*", "__pycache__/**/*"]
