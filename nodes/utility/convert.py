@@ -95,32 +95,32 @@ class SAIPrimitiveConverter:
             else:
                 return [cast_value(input_val, sub_data_type)]
 
-        if index_or_key != "" and isinstance(input_value, (list, dict)):
-            try:
-                if isinstance(input_value, list):
-                    input_value = input_value[int(index_or_key)]
-                elif isinstance(input_value, dict):
-                    if index_or_key in input_value:
+        if output_type == "STRING" or (sub_data_type == "STRING" and isinstance(input_value, (list, dict))):
+            if index_or_key != "":
+                try:
+                    if isinstance(input_value, list):
+                        input_value = input_value[int(index_or_key)]
+                    elif isinstance(input_value, dict):
                         input_value = input_value[index_or_key]
-                    else:
-                        raise KeyError
-            except (ValueError, IndexError, KeyError, TypeError) as e:
-                print(f"Error: Invalid index or key '{index_or_key}'. Defaulting to base value for {output_type}. Exception: {e}")
-                return (default_values[output_type], )
-        elif index_or_key == "" and output_type == "STRING":
-            return (json.dumps(input_value, indent=4),)
+                    return (cast_value(input_value, sub_data_type),)
+                except (ValueError, IndexError, KeyError, TypeError) as e:
+                    print(f"Error: Invalid index or key '{index_or_key}'. Exception: {e}")
+                    return (default_values["STRING"],)
+            elif index_or_key == "" and output_type == "STRING":
+                return (json.dumps(input_value, indent=4),)
 
         try:
             processed_input = process_input_value(input_value)
             if output_type == "LIST":
                 output = processed_input if isinstance(processed_input, list) else list(processed_input.values())
             elif output_type == "DICT":
-                output = processed_input
+                print(processed_input)
+                output = processed_input if isinstance(processed_input, str) else processed_input
             else:
                 print(f"Error: Unsupported type '{output_type}' for conversion. Defaulting to LIST.")
                 output = processed_input if isinstance(processed_input, list) else list(processed_input.values())
         except (ValueError, TypeError) as e:
-            print(f"Error: Conversion failed. Defaulting to base value.")
+            print(f"Error: Conversion failed. Defaulting to base value for {output_type}.")
             output = default_values.get(output_type, [])
 
         return (output,)

@@ -28,6 +28,7 @@ llamaindex-py-client = "0.1.13"
 llvmlite = "0.42.0"
 jsonpath-ng = "1.6.1"
 pillow = "10.2.0"
+python-color-transfer = "^0.1.2a0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
