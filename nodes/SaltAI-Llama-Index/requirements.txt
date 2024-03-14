@@ -19,3 +19,5 @@ llamaindex-py-client==0.1.13
 llvmlite==0.42.0
 
 openai-whisper
+
+jsonpath-ng==1.6.1
