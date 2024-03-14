@@ -20,10 +20,11 @@ class SaltInput:
             "required": {
                 "input_name": ("STRING", {}),
                 "input_desc": ("STRING", {}),
-                "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK"],),
+                "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK", "SEED", "ENUM"],),
                 "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False}),
+                "user_override_required": ("BOOLEAN", {}),
             },
-            "optional": {"input_image": ("IMAGE",), "input_mask": ("MASK",)},
+            "optional": {"input_image": ("IMAGE",), "input_mask": ("MASK",), "input_enum_options": ("STRING",)},
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
@@ -40,8 +41,10 @@ class SaltInput:
         input_desc,
         input_value,
         input_type,
+        user_override_required,  # only used for upstream input validation
         input_image=None,
         input_mask=None,
+        input_enum_options=None,
         unique_id=0,
     ):
         src_image = None
@@ -109,10 +112,16 @@ class SaltInput:
                 out = str(input_value)
             case "INT":
                 out = int(input_value)
+            case "SEED":
+                out = int(input_value)
             case "FLOAT":
                 out = float(input_value)
             case "BOOLEAN":
                 out = bool_str(input_value)
+            case "ENUM":
+                out = str(input_value)
+                if input_enum_options is None or out not in input_enum_options.split(','):
+                    raise ValueError('The provided input is not a supported value')
             case _:
                 out = input_value
 
@@ -139,7 +148,7 @@ class SaltOutput:
                 "animation_fps": ("INT", {"min": 1, "max": 60, "default": 8}),
                 "animation_quality": (["DEFAULT", "HIGH"],),
             },
-            "hidden": {"unique_id": "UNIQUE_ID"},
+            "hidden": {"unique_id": "UNIQUE_ID", "output_subdir": None},
         }
 
     OUTPUT_NODE = True
@@ -157,10 +166,10 @@ class SaltOutput:
         animation_fps=8,
         animation_quality="DEFAULT",
         unique_id=0,
+        output_subdir=None
     ):
         is_asset = False
         asset_id = str(uuid.uuid4())
-        output_string = None
 
         # Determine if valid type
         if output_type.strip() == "" or output_type not in [
@@ -190,12 +199,13 @@ class SaltOutput:
             output_name = sanitize_filename(output_name)
 
         # Create output dir based on uuid4
-        output_path = os.path.join(folder_paths.get_output_directory(), asset_id)
+        subfolder = os.path.join(output_subdir or '', asset_id)
+        output_path = os.path.join(folder_paths.get_output_directory(), subfolder)
+
         os.makedirs(output_path, exist_ok=True)
         if not os.path.exists(output_path):
             print(f"[SALT] Unable to create output directory `{output_path}`")
 
-        out_files = []
         results = []
         if output_type in ("PNG", "JPEG"):
             # Save all images in the tensor batch as specified by output_type
@@ -209,14 +219,14 @@ class SaltOutput:
                     pil_image.save(image_path, output_type)
                     results.append({
                         "filename": filename,
-                        "subfolder": asset_id,
+                        "subfolder": subfolder,
                         "type": "output"
                     })
                     if os.path.exists(image_path):
                         print(f"[SALT] Saved image to `{image_path}`")
                     else:
                         print(f"[SALT] Unable to save image to `{image_path}`")
-                    out_files.append(filename)
+
             except Exception as e:
                 raise e
 
@@ -227,13 +237,11 @@ class SaltOutput:
                 output_data, fps=int(animation_fps), quality=animation_quality
             )
             animator.save_animation(filename, format=output_type)
-            if output_type in ["GIF", "WEBP"]:
-                results.append({
-                    "filename": os.path.basename(filename),
-                    "subfolder": asset_id,
-                    "type": "output"
-                })
-            out_files = [os.path.basename(filename)]
+            results.append({
+                "filename": os.path.basename(filename),
+                "subfolder": subfolder,
+                "type": "output"
+            })
             if os.path.exists(filename):
                 print(f"[SALT] Saved file to `{filename}`")
             else:
@@ -241,24 +249,17 @@ class SaltOutput:
         else:
             # Prepare output string
             if output_type == "STRING":
-                output_string = str(output_data)
+                results.append(str(output_data))
 
         # Output Dictionary
         ui = {
             "ui": {
-                "salt_output": [
-                    {
-                        "id": unique_id,
-                        "reference_uuid": asset_id,
-                        "subfolder": asset_id,
-                        "filename": f,
-                        "description": output_desc,
-                        "asset": is_asset,
-                        "file_extension": output_type,
-                        "output_string": output_string,
-                     }
-                    for f in out_files
-                ]
+                "id": unique_id,
+                "reference_uuid": asset_id,
+                "description": output_desc,
+                "asset": is_asset,
+                "file_extension": output_type,
+                "salt_output": results
             }
         }
 
