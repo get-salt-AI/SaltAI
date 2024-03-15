@@ -106,7 +106,7 @@ class SaltInput:
             return (src_image, ui)
 
         # We're still here? We must be dealing with a primitive value
-        if input_allowed_values is not None and input_value.strip()g not in [o.strip() for o in input_allowed_values.split(',')]:
+        if input_allowed_values is not None and input_value.strip() not in [o.strip() for o in input_allowed_values.split(',')]:
             raise ValueError('The provided input is not a supported value')
 
 
