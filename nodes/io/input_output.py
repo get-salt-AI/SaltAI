@@ -20,11 +20,11 @@ class SaltInput:
             "required": {
                 "input_name": ("STRING", {}),
                 "input_desc": ("STRING", {}),
-                "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK", "SEED", "ENUM"],),
+                "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK", "SEED"],),
                 "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False}),
                 "user_override_required": ("BOOLEAN", {}),
             },
-            "optional": {"input_image": ("IMAGE",), "input_mask": ("MASK",), "input_enum_options": ("STRING",)},
+            "optional": {"input_image": ("IMAGE",), "input_mask": ("MASK",), "input_allowed_values": ("STRING",)},
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
@@ -44,7 +44,7 @@ class SaltInput:
         user_override_required,  # only used for upstream input validation
         input_image=None,
         input_mask=None,
-        input_enum_options=None,
+        input_allowed_values=None,
         unique_id=0,
     ):
         src_image = None
@@ -106,6 +106,10 @@ class SaltInput:
             return (src_image, ui)
 
         # We're still here? We must be dealing with a primitive value
+        if input_allowed_values is not None and input_value.strip()g not in [o.strip() for o in input_allowed_values.split(',')]:
+            raise ValueError('The provided input is not a supported value')
+
+
         out = ""
         match input_type:
             case "STRING":
@@ -118,10 +122,6 @@ class SaltInput:
                 out = float(input_value)
             case "BOOLEAN":
                 out = bool_str(input_value)
-            case "ENUM":
-                out = str(input_value)
-                if input_enum_options is None or out not in input_enum_options.split(','):
-                    raise ValueError('The provided input is not a supported value')
             case _:
                 out = input_value
 
