@@ -254,11 +254,11 @@ class SaltOutput:
         # Output Dictionary
         ui = {
             "ui": {
-                "id": unique_id,
-                "reference_uuid": asset_id,
-                "description": output_desc,
-                "asset": is_asset,
-                "file_extension": output_type,
+                "salt_id": unique_id,
+                "salt_reference_uuid": asset_id,
+                "salt_description": output_desc,
+                "salt_asset": is_asset,
+                "salt_file_extension": output_type,
                 "salt_output": results
             }
         }
