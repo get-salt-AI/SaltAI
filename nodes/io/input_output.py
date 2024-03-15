@@ -264,7 +264,7 @@ class SaltOutput:
         }
 
         # Assign images for previews of supported types
-        if output_type in ["PNG", "GIF", "WEBP"] and results:
+        if output_type in ["PNG", "GIF", "WEBP", "JPEG"] and results:
             ui["ui"].update({"images": results})
 
         # Print to log
