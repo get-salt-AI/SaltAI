@@ -21,10 +21,14 @@ class SaltInput:
                 "input_name": ("STRING", {}),
                 "input_desc": ("STRING", {}),
                 "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK", "SEED"],),
-                "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False}),
-                "user_override_required": ("BOOLEAN", {}),
+                "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False})
             },
-            "optional": {"input_image": ("IMAGE",), "input_mask": ("MASK",), "input_allowed_values": ("STRING",)},
+            "optional": {
+                "input_image": ("IMAGE",),
+                "input_mask": ("MASK",),
+                "input_allowed_values": ("STRING",),
+                "user_override_required": ("BOOLEAN",)
+            },
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
@@ -41,7 +45,7 @@ class SaltInput:
         input_desc,
         input_value,
         input_type,
-        user_override_required,  # only used for upstream input validation
+        user_override_required=False,
         input_image=None,
         input_mask=None,
         input_allowed_values=None,
@@ -254,11 +258,15 @@ class SaltOutput:
         # Output Dictionary
         ui = {
             "ui": {
-                "salt_id": unique_id,
-                "salt_reference_uuid": asset_id,
-                "salt_description": output_desc,
-                "salt_asset": is_asset,
-                "salt_file_extension": output_type,
+                "salt_metadata": [
+                    {
+                        "salt_id": unique_id,
+                        "salt_reference_uuid": asset_id,
+                        "salt_description": output_desc,
+                        "salt_asset": is_asset,
+                        "salt_file_extension": output_type,
+                    }
+                ],
                 "salt_output": results
             }
         }
