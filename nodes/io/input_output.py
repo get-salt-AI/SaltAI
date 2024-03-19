@@ -26,8 +26,8 @@ class SaltInput:
             "optional": {
                 "input_image": ("IMAGE",),
                 "input_mask": ("MASK",),
-                "input_allowed_values": ("STRING",),
-                "user_override_required": ("BOOLEAN",)
+                "input_allowed_values": ("STRING", {"default": ""}),
+                "user_override_required": ("BOOLEAN", {"default": False})
             },
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
@@ -45,10 +45,10 @@ class SaltInput:
         input_desc,
         input_value,
         input_type,
-        user_override_required=False,
         input_image=None,
         input_mask=None,
-        input_allowed_values=None,
+        input_allowed_values="",
+        user_override_required=False,
         unique_id=0,
     ):
         src_image = None
@@ -110,7 +110,7 @@ class SaltInput:
             return (src_image, ui)
 
         # We're still here? We must be dealing with a primitive value
-        if input_allowed_values is not None and input_value.strip() not in [o.strip() for o in input_allowed_values.split(',')]:
+        if input_allowed_values != "" and input_value.strip() not in [o.strip() for o in input_allowed_values.split(',')]:
             raise ValueError('The provided input is not a supported value')
 
 
@@ -282,12 +282,44 @@ class SaltOutput:
         pprint(ui, indent=4)
 
         return ui
+        
+
+class SaltInfo:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "workflow_title": ("STRING", {}),
+                "workflow_description": ("STRING", {}),
+            },
+            "hidden": {"unique_id": "UNIQUE_ID"},
+        }
+
+    OUTPUT_NODE = True
+    RETURN_TYPES = ("STRING", "STRING",)
+    RETURN_NAMES = ("title", "description")
+
+    FUNCTION = "info"
+    CATEGORY = "SALT/IO"
+
+    def info(self, workflow_title, workflow_description, unique_id=0):
+
+        print(f"[SaltInfo_{unique_id}] Workflow Info:")
+        print(f"Title: {workflow_title}")
+        print(f"Description: {workflow_description}")
+
+        return (workflow_title, workflow_description)
 
 
 # Node Export Manifest
-NODE_CLASS_MAPPINGS = {"SaltInput": SaltInput, "SaltOutput": SaltOutput}
+NODE_CLASS_MAPPINGS = {
+    "SaltInput": SaltInput, 
+    "SaltOutput": SaltOutput,
+    "SaltInfo": SaltInfo
+}
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "SaltInput": "Salt Flow Input",
     "SaltOutput": "Salt Flow Output",
+    "SaltInfo": "Salt Flow Info"
 }
