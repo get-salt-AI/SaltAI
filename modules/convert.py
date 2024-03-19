@@ -1,3 +1,4 @@
+import cv2
 from PIL import Image
 import numpy as np
 import torch
@@ -8,6 +9,16 @@ def tensor2pil(x):
 def pil2tensor(x):
     return torch.from_numpy(np.array(x).astype(np.float32) / 255.0).unsqueeze(0)
 
+def mask2pil(x):
+    x = 1. - x
+    if x.ndim != 3:
+        print(f"Expected a 3D tensor ([N, H, W]). Got {x.ndim} dimensions.")
+        x = x.unsqueeze(0) 
+    x_np = x.cpu().numpy()
+    if x_np.ndim != 3:
+        x_np = np.expand_dims(x_np, axis=0) 
+    return Image.fromarray(np.clip(255. * x_np[0, :, :], 0, 255).astype(np.uint8), 'L')
+
 def pil2mask(x):
     if x.mode == 'RGB':
         r, g, b = x.split()
@@ -16,3 +27,9 @@ def pil2mask(x):
         raise ValueError("Unsupported image mode, expected 'RGB' or 'L', got {}".format(x.mode))
     mask = torch.from_numpy(np.array(x).astype(np.float32) / 255.0).unsqueeze(0)
     return mask
+
+def cv2pil(img):
+    return Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+
+def pil2cv(img):
+    return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)

@@ -21,5 +21,9 @@ llama-parse==0.3.4
 llamaindex-py-client==0.1.13
 llvmlite==0.42.0
 
+openai-whisper
+
 jsonpath-ng==1.6.1
 pillow==10.2.0
+
+python-color-transfer>=0.1.2

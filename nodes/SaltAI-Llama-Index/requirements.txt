@@ -18,5 +18,6 @@ llama-parse==0.3.4
 llamaindex-py-client==0.1.13
 llvmlite==0.42.0
 
-git+https://github.com/openai/whisper.git
+openai-whisper
+
 jsonpath-ng==1.6.1

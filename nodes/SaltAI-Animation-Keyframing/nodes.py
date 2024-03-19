@@ -2,6 +2,7 @@ import random
 import time
 import torch
 
+from PIL import Image, ImageEnhance, ImageFilter
 from pprint import pprint
 from tqdm import tqdm
 
@@ -19,7 +20,7 @@ from .modules.transform import (
     horizontal_pan_presets,
     vertical_pan_presets
 )
-from .modules.utils import pil2mask, pil2tensor, tensor2pil
+from .modules.utils import pil2mask, pil2tensor, tensor2pil, mask2pil
 
 def log_curve(label, value):
     print(f"\t\033[1m\033[93m{label}:\033[0m")
@@ -697,6 +698,99 @@ class ParallaxMotion:
         return (x_min, x_max, y_min, y_max, adjusted_front_z_min, adjusted_front_z_max, back_x_min, back_x_max, back_y_min, back_y_max, back_z_min, back_z_max)
 
 
+class ScheduledImageAdjust:
+    '''
+    Accepts a batched image tensor, and optionally mask, and applying various 
+    adjustments based on the values of floats in LIST input form corresponding 
+    to each image in the batch. 
+
+    If a mask is given, adjustments only apply to the mask area.
+    '''
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+            },
+            "optional": {
+                "masks": ("MASK",),
+                "brightness_schedule": ("LIST", ),
+                "contrast_schedule": ("LIST", ),
+                "saturation_schedule": ("LIST", ),
+                "sharpness_schedule": ("LIST", ),
+                "gaussian_blur_schedule": ("LIST", ),
+                "edge_enhance_schedule": ("LIST", ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "images_adjust"
+
+    CATEGORY = "SALT/Animation/Keyframing/Image"
+
+    def float_value(self, adj_list, idx):
+        if isinstance(adj_list, list) and adj_list:
+            return adj_list[idx] if idx < len(adj_list) else adj_list[-1]
+        else:
+            return 1.0
+
+    def images_adjust(
+            self, 
+            images, 
+            masks=[], 
+            brightness_schedule=[1.0], 
+            contrast_schedule=[1.0], 
+            saturation_schedule=[1.0], 
+            sharpness_schedule=[1.0], 
+            gaussian_blur_schedule=[0.0], 
+            edge_enhance_schedule=[0.0]
+        ):
+        
+        adjusted_images = []
+        for idx, img in enumerate(images):
+            original_pil_image = tensor2pil(img.unsqueeze(0))
+            pil_image = original_pil_image.copy() 
+            if isinstance(masks, torch.Tensor):
+                pil_mask = mask2pil(masks[idx].unsqueeze(0)) if idx < len(masks) else mask2pil(masks[-1].unsqueeze(0))
+                pil_mask = pil_mask.resize(original_pil_image.size).convert('L')
+            else:
+                pil_mask = None
+
+            brightness = self.float_value(brightness_schedule, idx)
+            contrast = self.float_value(contrast_schedule, idx)
+            saturation = self.float_value(saturation_schedule, idx)
+            sharpness = self.float_value(sharpness_schedule, idx)
+            gaussian_blur = self.float_value(gaussian_blur_schedule, idx)
+            edge_enhance = self.float_value(edge_enhance_schedule, idx)
+
+            if brightness != 1.0:
+                pil_image = ImageEnhance.Brightness(pil_image).enhance(brightness)
+            
+            if contrast != 1.0:
+                pil_image = ImageEnhance.Contrast(pil_image).enhance(contrast)
+
+            if saturation != 1.0:
+                pil_image = ImageEnhance.Color(pil_image).enhance(saturation)
+
+            if sharpness != 1.0:
+                pil_image = ImageEnhance.Sharpness(pil_image).enhance(sharpness)
+
+            if gaussian_blur > 0.0:
+                pil_image = pil_image.filter(ImageFilter.GaussianBlur(radius=gaussian_blur))
+
+            if edge_enhance > 0.0:
+                edge_enhanced_img = pil_image.filter(ImageFilter.EDGE_ENHANCE_MORE)
+                blend_mask = Image.new("L", pil_image.size, color=int(round(edge_enhance * 255)))
+                pil_image = Image.composite(edge_enhanced_img, pil_image, blend_mask)
+
+            if pil_mask:
+                pil_image = Image.composite(pil_image, original_pil_image, pil_mask)
+
+            adjusted_images.append(pil2tensor(pil_image))
+
+        return (torch.cat(adjusted_images, dim=0), )
+
+
 NODE_CLASS_MAPPINGS = {
     "OPAC": OPAC,
     "OPACPerlinSettings": OPACPerlinSettings,
@@ -706,7 +800,8 @@ NODE_CLASS_MAPPINGS = {
     #"OPACTransformImages": OPACTransformImages,
     "OPCScheduler": OPCScheduler,
     "OPCSLayerExtractor": OPCSLayerExtractor,
-    "ParallaxMotion": ParallaxMotion
+    "ParallaxMotion": ParallaxMotion, 
+    "ScheduledImageAdjust": ScheduledImageAdjust
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -718,5 +813,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     #"OPACTransformImages": "OPAC Transform Image Batch",
     "OPCScheduler": "Parallax Motion Camera Scheduler",
     "OPCSLayerExtractor": "Parallax Motion Camera Scheduler Extractor",
-    "ParallaxMotion": "Parallax Motion Parameters Generator"
+    "ParallaxMotion": "Parallax Motion Parameters Generator",
+    "ScheduledImageAdjust": "Batch Image Scheduled Adjustments"
 }
