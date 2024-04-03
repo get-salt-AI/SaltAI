@@ -319,7 +319,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "SaltInput": "Salt Flow Input",
-    "SaltOutput": "Salt Flow Output",
-    "SaltInfo": "Salt Flow Info"
+    "SaltInput": "Salt Workflow Input",
+    "SaltOutput": "Salt Workflow Output",
+    "SaltInfo": "Salt Workflow Info"
 }
