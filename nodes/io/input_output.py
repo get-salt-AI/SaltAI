@@ -71,18 +71,19 @@ class SaltInput:
         }
 
         if is_asset:
-            if isinstance(input_image, torch.Tensor):
-                # Input `IMAGE` is provided, so we act like a passthrough
-                return (input_image, ui)
-            elif isinstance(input_mask, torch.Tensor):
-                # Input `MASK` is provided, so we act like a passthrough
-                return (input_mask, ui)
-            elif input_value.strip():
+            # Input value must be evaluated first to override input images/masks
+            if input_value.strip():
                 # Load image from path from input_value
                 try:
                     src_image = Image.open(input_value.strip()).convert("RGBA")
                 except Exception as e:
                     print(f"Error loading image from specified path {input_value}: {e}")
+            elif isinstance(input_image, torch.Tensor):
+                # Input `IMAGE` is provided, so we act like a passthrough
+                return (input_image, ui)
+            elif isinstance(input_mask, torch.Tensor):
+                # Input `MASK` is provided, so we act like a passthrough
+                return (input_mask, ui)
 
             if src_image:
                 if input_type == "MASK":
