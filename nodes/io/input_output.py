@@ -13,6 +13,7 @@ from SaltAI.modules.sanitize import sanitize_filename, bool_str
 
 from SaltAI.modules.animation.image_animator import ImageAnimator
 
+
 class SaltInput:
     @classmethod
     def INPUT_TYPES(cls):
@@ -20,14 +21,25 @@ class SaltInput:
             "required": {
                 "input_name": ("STRING", {}),
                 "input_desc": ("STRING", {}),
-                "input_type": (["STRING", "FLOAT", "INT", "BOOLEAN", "IMAGE", "MASK", "SEED"],),
-                "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False})
+                "input_type": (
+                    [
+                        "STRING",
+                        "FLOAT",
+                        "INT",
+                        "BOOLEAN",
+                        "IMAGE",
+                        "MASK",
+                        "SEED",
+                        "FILE",
+                    ],
+                ),
+                "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False}),
             },
             "optional": {
                 "input_image": ("IMAGE",),
                 "input_mask": ("MASK",),
                 "input_allowed_values": ("STRING", {"default": ""}),
-                "user_override_required": ("BOOLEAN", {"default": False})
+                "user_override_required": ("BOOLEAN", {"default": False}),
             },
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
@@ -59,14 +71,16 @@ class SaltInput:
 
         ui = {
             "ui": {
-                "salt_input": [{
-                    "id": unique_id,
-                    "name": input_name or "input_" + str(unique_id),
-                    "description": input_desc or "",
-                    "asset": is_asset or False,
-                    "type": input_type or "string",
-                    "value": input_value or "",
-                }]
+                "salt_input": [
+                    {
+                        "id": unique_id,
+                        "name": input_name or "input_" + str(unique_id),
+                        "description": input_desc or "",
+                        "asset": is_asset or False,
+                        "type": input_type or "string",
+                        "value": input_value or "",
+                    }
+                ]
             }
         }
 
@@ -110,9 +124,10 @@ class SaltInput:
             return (src_image, ui)
 
         # We're still here? We must be dealing with a primitive value
-        if input_allowed_values != "" and input_value.strip() not in [o.strip() for o in input_allowed_values.split(',')]:
-            raise ValueError('The provided input is not a supported value')
-
+        if input_allowed_values != "" and input_value.strip() not in [
+            o.strip() for o in input_allowed_values.split(",")
+        ]:
+            raise ValueError("The provided input is not a supported value")
 
         out = ""
         match input_type:
@@ -170,7 +185,7 @@ class SaltOutput:
         animation_fps=8,
         animation_quality="DEFAULT",
         unique_id=0,
-        output_subdir=None
+        output_subdir=None,
     ):
         is_asset = False
         asset_id = str(uuid.uuid4())
@@ -203,7 +218,7 @@ class SaltOutput:
             output_name = sanitize_filename(output_name)
 
         # Create output dir based on uuid4
-        subfolder = os.path.join(output_subdir or '', asset_id)
+        subfolder = os.path.join(output_subdir or "", asset_id)
         output_path = os.path.join(folder_paths.get_output_directory(), subfolder)
 
         os.makedirs(output_path, exist_ok=True)
@@ -221,11 +236,9 @@ class SaltOutput:
                     filename = f"{file_prefix}_{index:04d}{file_ext}"
                     image_path = os.path.join(output_path, filename)
                     pil_image.save(image_path, output_type)
-                    results.append({
-                        "filename": filename,
-                        "subfolder": subfolder,
-                        "type": "output"
-                    })
+                    results.append(
+                        {"filename": filename, "subfolder": subfolder, "type": "output"}
+                    )
                     if os.path.exists(image_path):
                         print(f"[SALT] Saved image to `{image_path}`")
                     else:
@@ -241,11 +254,13 @@ class SaltOutput:
                 output_data, fps=int(animation_fps), quality=animation_quality
             )
             animator.save_animation(filename, format=output_type)
-            results.append({
-                "filename": os.path.basename(filename),
-                "subfolder": subfolder,
-                "type": "output"
-            })
+            results.append(
+                {
+                    "filename": os.path.basename(filename),
+                    "subfolder": subfolder,
+                    "type": "output",
+                }
+            )
             if os.path.exists(filename):
                 print(f"[SALT] Saved file to `{filename}`")
             else:
@@ -267,7 +282,7 @@ class SaltOutput:
                         "salt_file_extension": output_type,
                     }
                 ],
-                "salt_output": results
+                "salt_output": results,
             }
         }
 
@@ -282,7 +297,7 @@ class SaltOutput:
         pprint(ui, indent=4)
 
         return ui
-        
+
 
 class SaltInfo:
     @classmethod
@@ -296,14 +311,16 @@ class SaltInfo:
         }
 
     OUTPUT_NODE = True
-    RETURN_TYPES = ("STRING", "STRING",)
+    RETURN_TYPES = (
+        "STRING",
+        "STRING",
+    )
     RETURN_NAMES = ("title", "description")
 
     FUNCTION = "info"
     CATEGORY = "SALT/IO"
 
     def info(self, workflow_title, workflow_description, unique_id=0):
-
         print(f"[SaltInfo_{unique_id}] Workflow Info:")
         print(f"Title: {workflow_title}")
         print(f"Description: {workflow_description}")
@@ -313,13 +330,13 @@ class SaltInfo:
 
 # Node Export Manifest
 NODE_CLASS_MAPPINGS = {
-    "SaltInput": SaltInput, 
+    "SaltInput": SaltInput,
     "SaltOutput": SaltOutput,
-    "SaltInfo": SaltInfo
+    "SaltInfo": SaltInfo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "SaltInput": "Salt Flow Input",
     "SaltOutput": "Salt Flow Output",
-    "SaltInfo": "Salt Flow Info"
+    "SaltInfo": "Salt Flow Info",
 }
