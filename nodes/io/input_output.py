@@ -33,7 +33,7 @@ class SaltInput:
                         "FILE",
                     ],
                 ),
-                "input_value": ("STRING", {"multiline": True, "dynamicPrompts": False}),
+                "input_value": ("STRING", {}),
             },
             "optional": {
                 "input_image": ("IMAGE",),

@@ -7,7 +7,8 @@ from SaltAI.modules.node_importer import ModuleLoader
 ROOT = os.path.abspath(os.path.dirname(__file__))
 NAME = "Salt.AI"
 PACKAGE = "SaltAI"
-NODES_DIR = os.path.join(ROOT, 'nodes')
+WEB_DIRECTORY = "web"
+NODES_DIR = os.path.join(ROOT, "nodes")
 EXTENSION_WEB_DIRS = {}
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
@@ -26,11 +27,11 @@ NODE_DISPLAY_NAME_MAPPINGS = module_loader.NODE_DISPLAY_NAME_MAPPINGS
 module_loader.report(NAME)
 
 # Add .results format
-folder_paths.supported_pt_extensions.add('.results')
-if '.results' in folder_paths.supported_pt_extensions:
+folder_paths.supported_pt_extensions.add(".results")
+if ".results" in folder_paths.supported_pt_extensions:
     print("\nAdded LoRa extension format: .results")
 else:
     print("\nUnable to add LoRa extension format: .results")
 
 # Export nodes
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
