@@ -1,6 +1,3 @@
-from PIL import Image
-import numpy as np
-import torch
 import re
 
 def sanitize_filename(filename):

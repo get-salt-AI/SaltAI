@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+import tempfile
 import imageio
 import numpy as np
 from PIL import Image
@@ -64,48 +65,61 @@ class ImageAnimator:
             "-codec", "copy",
             temp_path
         ]
-        try:
-            subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            os.replace(temp_path, path)
-        except subprocess.CalledProcessError as e:
-            print("Failed to add metadata:", e)
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-            raise
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.replace(temp_path, path)
 
-    def save_animation(self, filename, format="GIF"):
+    def save_animation(self, filename, format="GIF", audio=None):
         images = self._prepare_images()
 
-        # Get optimized images for color palette
         if self.quality.lower() == "high" and format.upper() == "GIF":
             optimized_images = self._optimize_palette(images)
         else:
             optimized_images = images
         
-        # Gather frames
-        if format.upper() == "GIF":
-            video_frames = [np.array(img) for img in optimized_images]
-        else:
-            video_frames = [np.array(img.convert("RGB")) for img in images]
-
+        video_frames = [np.array(img.convert("RGB")) for img in optimized_images]
+        
         codec_options = {
             "MP4": {"codec": "libx264"},
             "WEBM": {"codec": "libvpx", "bitrate": "1M"},
             "AVI": {"codec": "mpeg4"}
         }
 
-        # Animated GIF (probably not the best quality, there are approached with using ffmpeg directly)
-        if format.upper() == "GIF":
+        if format.upper() in codec_options:
+            temp_video_path = filename + "_temp." + format.lower()
+            imageio.mimsave(temp_video_path, video_frames, format=format.lower(), fps=self.fps, **codec_options[format.upper()])
+            
+            if audio:
+                # Save the audio bytes buffer to a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as audio_file:
+                    audio_file.write(audio)
+                    audio_file_path = audio_file.name
+                
+                # Combine video and audio using FFmpeg
+                command = [
+                    "ffmpeg",
+                    "-y",
+                    "-i", temp_video_path,
+                    "-i", audio_file_path,
+                    "-c:v", codec_options[format.upper()]['codec'],
+                    "-c:a", "aac",
+                    "-strict", "experimental",
+                    "-shortest",
+                    filename
+                ]
+                subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                os.remove(temp_video_path)  # Clean up temporary video file
+                os.remove(audio_file_path)  # Clean up temporary audio file
+            else:
+                # Move temporary video to final path if no audio
+                os.rename(temp_video_path, filename)
+
+        elif format.upper() == "GIF":
             optimized_images[0].save(filename, save_all=True, append_images=optimized_images[1:], optimize=False, duration=self.frame_delay, loop=0)
-        # Video Formats
-        elif format.upper() in codec_options: 
-            imageio.mimsave(filename, video_frames, format=format.lower(), fps=self.fps, **codec_options[format.upper()])
-        # Animted Webp
         elif format.upper() == "WEBP":
             imageio.mimsave(filename, video_frames, format='webp', fps=self.fps)
         else:
             raise ValueError("Unsupported format. Please choose 'GIF', 'WEBP', 'MP4', 'WEBM', or 'AVI'.")
 
-        # Handle metadata for formats other than 'WEBP' and 'GIF'
+        # Add metadata for applicable formats
         if format.upper() not in ["WEBP", "GIF", "WEBM"]:
-            self._ffmpeg_metadata(filename, {"author": "Salt.AI", "website": "Generated with http://getsalt.ai"})
+            self._ffmpeg_metadata(filename, {"author": "Salt.AI", "website": "http://getsalt.ai"})

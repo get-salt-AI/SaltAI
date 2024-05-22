@@ -33,3 +33,30 @@ def cv2pil(img):
 
 def pil2cv(img):
     return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
+def image2mask(x, release=False):
+    z = x.clone()
+    w = torch.tensor([0.299, 0.587, 0.114]).view(1, 1, 1, 3)
+    w = w.to(z.device)
+    g = torch.sum(z * w, dim=-1)
+    if release:
+        del x
+    return g
+
+def masks2pils(x, dtype=np.uint8, release=False):
+    if len(x.shape) != 3:
+        raise ValueError("Input tensor must be of shape [N, H, W].")
+    N, H, W = x.shape
+    masks = []
+    for n in range(N):
+        # Check if the tensor values are in the range [0, 1] and convert to [0, 255] if necessary
+        if x.max() <= 1.0:
+            mask_numpy = (x[n].cpu().detach().numpy() * 255).astype(dtype)
+        else:
+            mask_numpy = x[n].cpu().detach().numpy().astype(dtype)
+        
+        mask = Image.fromarray(mask_numpy, 'L')
+        masks.append(mask)
+    if release:
+        del x  # Release the tensor from memory if specified
+    return masks

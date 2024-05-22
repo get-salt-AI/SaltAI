@@ -1,6 +1,7 @@
 import json
 import re
 
+from ... import logger
 from SaltAI.modules.types import WILDCARD
 from SaltAI.modules.sanitize import bool_str
 
@@ -41,7 +42,7 @@ class SAIPrimitiveConverter:
                 else:
                     return value
             except Exception as e:
-                print(f"[WARNING] {e}")
+                logger.warning(f"{e}")
                 return value
 
         default_values = {
@@ -104,7 +105,8 @@ class SAIPrimitiveConverter:
                         input_value = input_value[index_or_key]
                     return (cast_value(input_value, sub_data_type),)
                 except (ValueError, IndexError, KeyError, TypeError) as e:
-                    print(f"Error: Invalid index or key '{index_or_key}'. Exception: {e}")
+                    errmsg = f"Error: Invalid index or key '{index_or_key}'. Exception: {e}"
+                    logger.warning(errmsg)
                     return (default_values["STRING"],)
             elif index_or_key == "" and output_type == "STRING":
                 return (json.dumps(input_value, indent=4),)
@@ -117,10 +119,12 @@ class SAIPrimitiveConverter:
                 print(processed_input)
                 output = processed_input if isinstance(processed_input, str) else processed_input
             else:
-                print(f"Error: Unsupported type '{output_type}' for conversion. Defaulting to LIST.")
+                errmsg = f"Error: Unsupported type '{output_type}' for conversion. Defaulting to LIST."
+                logger.warning(errmsg)
                 output = processed_input if isinstance(processed_input, list) else list(processed_input.values())
-        except (ValueError, TypeError) as e:
-            print(f"Error: Conversion failed. Defaulting to base value for {output_type}.")
+        except (ValueError, TypeError):
+            errmsg = f"Error: Conversion failed. Defaulting to base value for {output_type}."
+            logger.warning(errmsg)
             output = default_values.get(output_type, [])
 
         return (output,)
