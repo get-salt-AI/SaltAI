@@ -8,17 +8,14 @@ import mimetypes
 import os
 import json
 import time
-import threading
-import sys
-import itertools
 
 import cv2
-import torch
 import io
 from PIL import Image
 import uuid
 
 import folder_paths
+from ... import logger
 
 MAIN_CACHE = folder_paths.get_temp_directory()
 
@@ -44,7 +41,7 @@ class SAIAPI:
         }
 
     def create_payload(self, **kwargs):
-        print("Creating payload...")
+        logger.info("Creating payload...")
 
         payload_parts = []
         for key, value in kwargs.items():
@@ -62,7 +59,9 @@ class SAIAPI:
                     content_type = 'image/png' if image_format == 'PNG' else 'image/jpeg'
                     filename = f'image.{image_format.lower()}'
                 else:
-                    raise ValueError("image must be a string (file path) or a PIL Image")
+                    errmsg = "image must be a string (file path) or a PIL Image"
+                    logger.error(errmsg)
+                    raise ValueError(errmsg)
 
                 part = (
                     f"--{self.boundary}\r\n"
@@ -86,7 +85,7 @@ class SAIAPI:
             payload_parts.append(part)
 
         payload = b"\r\n".join(payload_parts) + f"\r\n--{self.boundary}--\r\n".encode('utf-8')
-        print("Payload created.")
+        logger.info("Payload created.")
         return payload
 
     def svd_img2vid(self, image, seed=0, cfg=2.5, mbi=42):
@@ -94,11 +93,12 @@ class SAIAPI:
         animation_started = False
 
         payload = self.create_payload(image=image, seed=seed, cfg_scale=cfg, motion_bucket_id=mbi)
-        print("Contacting Stability AI API...")
+        logger.info("Contacting Stability AI API...")
         self.conn.request("POST", ENDPOINTS['svd'], payload, self.headers)
         res = self.conn.getresponse()
         if res.status != 200:
-            print(f"API request failed with status code {res.status}: {res.reason}")
+            errmsg = f"API request failed with status code {res.status}: {res.reason}"
+            logger.warning(errmsg)
         data = res.read()
         response = json.loads(data.decode("utf-8"))
 
@@ -117,10 +117,10 @@ class SAIAPI:
                 id = response.get('id')
 
             if not id:
-                print("Failed to obtain result ID from Stability AI API.")
+                logger.warning("Failed to obtain result ID from Stability AI API.")
                 return None
 
-        print(f"Inference started, ID: {id}")
+        logger.info(f"Inference started, ID: {id}")
 
         ret_header = self.headers
         ret_header['content-type'] = f'application/json; type=video/mp4; boundary={self.boundary}'
@@ -140,29 +140,29 @@ class SAIAPI:
                         pprint(result, indent=4)
                         video_data = base64.b64decode(result['video'])
                         frames = self.mp4_to_pil_frames(video_data)
-                        print("Video generated and received.")
-                        print(f"Seed used for the video: {result.get('seed', 'Not available')}")
+                        logger.info("Video generated and received.")
+                        logger.info(f"Seed used for the video: {result.get('seed', 'Not available')}")
                         return frames
                     elif status_code in [400, 404, 500]:
                         result = json.loads(result_data.decode("utf-8"))
-                        print(f"Error: {result.get('name')}")
+                        logger.error(f"Error: {result.get('name')}")
                         for error in result.get('errors', []):
-                            print(error)
+                            logger.error(error)
                         break
                     else:
-                        print(f"Unexpected status code received: {status_code}")
+                        logger.error(f"Unexpected status code received: {status_code}")
                         break
 
                 else:
                     if not animation_started:
                         animation_started = True
                     if animation_started:
-                        print("Still waiting...")
+                        logger.warning("Still waiting...")
                     time.sleep(10)
 
             except UnicodeDecodeError: # We're always getting back binary despite trying to get back JSON, why?
                 frames = self.get_frames(result_data)
-                print("Video generated and received.")
+                logger.info("Video generated and received.")
                 return frames
 
     def get_frames(self, video_data):
@@ -210,30 +210,39 @@ class SaltAIStableVideoDiffusion:
     RETURN_NAMES = ("frames",)
 
     FUNCTION = "generate_video"
-    CATEGORY = f"SALT/API/Stability API"
+    CATEGORY = "SALT/API/Stability API"
 
     def generate_video(self, image, api_key, seed=0, cfg=2.5, mbi=40):
 
         if api_key.strip() == "":
-            raise Exception("A Stability AI API Key is required for video generaiton.")
+            errmsg = "A Stability AI API Key is required for video generaiton."
+            logger.error(errmsg)
+            raise Exception(errmsg)
 
         try:
             api = SAIAPI(api_key)
 
             if image.dim() != 4 and image.size(0) != 1:
-                raise Exception("Only one image is allowed for Stability AI Stable Video Generation API.")
+                errmsg = "Only one image is allowed for Stability AI Stable Video Generation API."
+                logger.error(errmsg)
+                raise Exception(errmsg)
             
             image = tensor2pil(image)
             if image.size not in [(1024, 576), (576, 1024), (768, 768)]:
-                raise Exception("Image resolution can only be within the following sizes: 1024x576, 576x1024, 768x768")
+                errmsg = "Image resolution can only be within the following sizes: 1024x576, 576x1024, 768x768"
+                logger.error(errmsg)
+                raise Exception(errmsg)
             
             frames = api.svd_img2vid(image=image, seed=seed, cfg=cfg, mbi=mbi)
             if frames and len(frames) > 0:
                 frame_tensors = [pil2tensor(frame) for frame in frames]
                 frame_batch = torch.cat(frame_tensors, dim=0)
             else:
-                raise Exception("No frames found from SVD video temp file.")
+                errmsg = "No frames found from SVD video temp file."
+                logger.error(errmsg)
+                raise Exception(errmsg)
         except Exception as e:
+            logger.error(f"{e}")
             raise e
         
         return (frame_batch, )

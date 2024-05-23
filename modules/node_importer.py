@@ -96,5 +96,5 @@ class ModuleLoader:
             suffix = f' [{self.NODE_DISPLAY_NAME_MAPPINGS[class_name]}]' if self.NODE_DISPLAY_NAME_MAPPINGS.__contains__(class_name) else ''
             loaded_nodes.append(f"\33[1m{class_name}\33[0m{suffix}")
 
-        print(f"\n\33[1mLoaded Nodes:\33[0m\n" + "\33[93m,\33[0m ".join(loaded_nodes))
+        print("\n\33[1mLoaded Nodes:\33[0m\n" + "\33[93m,\33[0m ".join(loaded_nodes))
 

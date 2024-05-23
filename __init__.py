@@ -2,15 +2,21 @@ import os
 
 import folder_paths
 
-from SaltAI.modules.node_importer import ModuleLoader
+from .modules.node_importer import ModuleLoader
+from .modules.log import create_logger
+logger = create_logger()
+
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
-NAME = "Salt.AI"
+NAME = "SALT"
+DISPLAY_NAME = "Salt AI"
 PACKAGE = "SaltAI"
 NODES_DIR = os.path.join(ROOT, 'nodes')
 EXTENSION_WEB_DIRS = {}
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
+WEB_DIRECTORY = "./web"
+
 
 # Load modules
 module_timings = {}
@@ -23,14 +29,14 @@ NODE_CLASS_MAPPINGS = module_loader.NODE_CLASS_MAPPINGS
 NODE_DISPLAY_NAME_MAPPINGS = module_loader.NODE_DISPLAY_NAME_MAPPINGS
 
 # Timings and such
-module_loader.report(NAME)
+module_loader.report(DISPLAY_NAME)
 
 # Add .results format
 folder_paths.supported_pt_extensions.add('.results')
 if '.results' in folder_paths.supported_pt_extensions:
-    print("\nAdded LoRa extension format: .results")
+    logger.info("\nAdded LoRa extension format: .results")
 else:
-    print("\nUnable to add LoRa extension format: .results")
+    logger.warning("\nUnable to add LoRa extension format: .results")
 
 # Export nodes
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
