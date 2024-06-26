@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "SaltAI"
 version = "0.0.1"
-description = "Salt nodes for ComfyUI."
+description = "Salt AI nodes for ComfyUI."
 authors = ["WAS-PlaiLabs <jordan.thompson@plailabs.com>"]
 license = "General Public License"
 
@@ -20,3 +20,12 @@ build-backend = "poetry.core.masonry.api"
 
 # Exclude specific patterns from the package
 exclude = ["marinade/**/*", "__pycache__/**/*"]
+
+[project.urls]
+Repository = "https://github.com/get-salt-AI/SaltAI_Language_Toolkit"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "saltai"
+DisplayName = "SaltAI_Language_Toolkit"
+Icon = ""

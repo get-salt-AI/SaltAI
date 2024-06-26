@@ -1,4 +1,5 @@
 from PIL import Image, ImageOps, ImageFilter
+from skimage.measure import label, regionprops
 import numpy as np
 
 from SaltAI import NAME
@@ -44,32 +45,42 @@ class MaskFilters():
         return ImageOps.invert(centered_crop)
                 
     @staticmethod
-    def crop_region(mask, padding=0):
-        bbox = mask.getbbox()
-        if bbox is None:
-            return mask, (mask.size, (0, 0, 0, 0))
-        
-        bbox_width = bbox[2] - bbox[0]
-        bbox_height = bbox[3] - bbox[1]
-        
-        side_length = max(bbox_width, bbox_height) + 2 * padding
-        
-        center_x = (bbox[2] + bbox[0]) // 2
-        center_y = (bbox[3] + bbox[1]) // 2
-        
-        crop_x = center_x - side_length // 2
-        crop_y = center_y - side_length // 2
-        
-        crop_x = max(crop_x, 0)
-        crop_y = max(crop_y, 0)
-        crop_x2 = min(crop_x + side_length, mask.width)
-        crop_y2 = min(crop_y + side_length, mask.height)
-        
-        cropped_mask = mask.crop((crop_x, crop_y, crop_x2, crop_y2))
-        crop_data = (cropped_mask.size, (crop_x, crop_y, crop_x2, crop_y2))
+    def crop_region(image, region_type="dominant", padding=0):
+        grayscale_image = image.convert("L")
+        binary_image = grayscale_image.point(lambda x: 255 if x > 128 else 0, mode="1")
+        labeled_image = label(np.array(binary_image))
+        regions = regionprops(labeled_image)
 
-        return cropped_mask, crop_data
+        if not regions:
+            return image, (image.size, (0, 0, 0, 0))
 
+        if region_type == "minority":
+            target_region = min(regions, key=lambda r: r.area)
+        else:  # "dominant"
+            target_region = max(regions, key=lambda r: r.area)
+
+        minr, minc, maxr, maxc = target_region.bbox
+        width = maxc - minc
+        height = maxr - minr
+        side_length = max(width, height) + 2 * padding
+        
+        x_center = (minc + maxc) // 2
+        y_center = (minr + maxr) // 2
+        new_minr = y_center - side_length // 2
+        new_maxr = y_center + side_length // 2
+        new_minc = x_center - side_length // 2
+        new_maxc = x_center + side_length // 2
+
+        new_minc = max(new_minc, 0)
+        new_minr = max(new_minr, 0)
+        new_maxc = min(new_maxc, image.width)
+        new_maxr = min(new_maxr, image.height)
+
+        cropped_image = image.crop((new_minc, new_minr, new_maxc, new_maxr))
+
+        crop_data = (cropped_image.size, (new_minc, new_minr, new_maxc, new_maxr))
+        return cropped_image, crop_data
+        
     @staticmethod
     def dominant_region(image, threshold=128):
         from scipy.ndimage import label

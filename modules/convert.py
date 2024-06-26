@@ -20,12 +20,22 @@ def mask2pil(x):
     return Image.fromarray(np.clip(255. * x_np[0, :, :], 0, 255).astype(np.uint8), 'L')
 
 def pil2mask(x):
+    # Convert image to grayscale if it is RGB
     if x.mode == 'RGB':
-        r, g, b = x.split()
-        x = Image.fromarray(np.uint8(0.2989 * np.array(r) + 0.5870 * np.array(g) + 0.1140 * np.array(b)), 'L')
+        x = x.convert('L')
     elif x.mode != 'L':
-        raise ValueError("Unsupported image mode, expected 'RGB' or 'L', got {}".format(x.mode))
-    mask = torch.from_numpy(np.array(x).astype(np.float32) / 255.0).unsqueeze(0)
+        raise ValueError(f"Unsupported image mode, expected 'RGB' or 'L', got {x.mode}")
+
+    # Convert image to numpy array and normalize to [0, 1]
+    mask_array = np.array(x).astype(np.float32) / 255.0
+
+    # Ensure the array has the shape [H, W] without additional dimensions
+    if mask_array.ndim == 3:
+        mask_array = mask_array[:, :, 0]  # Remove the channel dimension if it exists
+
+    # Convert numpy array to tensor and add batch dimension
+    mask = torch.from_numpy(mask_array).unsqueeze(0)
+    
     return mask
 
 def cv2pil(img):

@@ -2,7 +2,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 import torch
 
 from ... import logger
-from SaltAI.modules.convert import pil2tensor, tensor2pil, pil2mask, mask2pil
+from SaltAI.modules.convert import pil2tensor, tensor2pil, pil2mask
 from SaltAI.modules.masking import MaskFilters
 from SaltAI import NAME
 
@@ -210,7 +210,7 @@ class SaltMaskCropRegion:
         
         for n in range(N):
             mask = masks[n]
-            mask_pil = mask2pil(mask.unsqueeze(0))
+            mask_pil = tensor2pil(mask)
             if not master_size:
                 master_size = mask_pil.size
             region_mask, crop_data = MaskFilters.crop_region(mask_pil, region_type, padding)
@@ -221,7 +221,12 @@ class SaltMaskCropRegion:
 
         cropped_masks_batch = torch.cat(cropped_masks, dim=0)
 
-        return (cropped_masks_batch, crop_data_list)
+        # Extract crop data
+        top_int, left_int, right_int, bottom_int = crop_data_list[0][1]
+        width_int, height_int = cropped_masks_batch.shape[2], cropped_masks_batch.shape[1]
+
+        return (cropped_masks_batch, crop_data_list, top_int, left_int, right_int, bottom_int, width_int, height_int)
+
     
 class SaltBatchCropDataExtractor:
     @classmethod
